@@ -1,8 +1,12 @@
+export type Priority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
+export type Status = "todo" | "inprogress" | "done";
+
 export interface ITaskData {
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "inprogress" | "done";
+  status: Status;
+  priority?: Priority; 
 }
 
 export interface ColumnData {
