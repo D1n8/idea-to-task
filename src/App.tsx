@@ -1,5 +1,5 @@
 import './App.css'
-import KanbanFlow from './components/KanbanBoard'
+import KanbanFlow from './components/KanbanFlow'
 
 function App() {
   return (

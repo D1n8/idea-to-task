@@ -1,15 +1,15 @@
 export interface ITaskData {
-  height?: number;
-  width?: number;
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "inprogress" | "testing" | "done";
+  status: "todo" | "inprogress" | "done";
 }
 
-export type ColumnData = {
+export interface ColumnData {
   id: string;
   title: string;
+  x: number;
+  y: number;
   width: number;
   height: number;
-};
+}
