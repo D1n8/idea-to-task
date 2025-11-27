@@ -6,7 +6,8 @@ export interface ITaskData {
   description?: string;
   status: "todo" | "inprogress" | "done";
   priority?: Priority;
-  deadline?: string; // Формат YYYY-MM-DD
+  deadline?: string;
+  username?: string; 
 }
 
 export interface ColumnData {

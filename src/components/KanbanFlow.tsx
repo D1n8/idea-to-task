@@ -13,13 +13,13 @@ import TaskNode from "./TaskNode";
 import Modal from "./Modal";
 import type { ColumnData, ITaskData, Priority } from "../modules";
 
-// --- КОНСТАНТЫ (без изменений) ---
+// --- КОНСТАНТЫ ---
 const MIN_COLUMN_HEIGHT = 600;
 const COLUMN_WIDTH = 320;
 const COLUMN_HEADER_HEIGHT = 60;
 const NODE_PADDING = 16;
 const TASK_WIDTH = COLUMN_WIDTH - NODE_PADDING * 2;
-const TASK_HEIGHT = 100; // Немного увеличим высоту задачи, чтобы влезла дата
+const TASK_HEIGHT = 110; // Еще немного увеличим высоту, чтобы элементы не слипались
 const TASK_GAP = 12;
 
 const initialColumns: ColumnData[] = [
@@ -29,8 +29,8 @@ const initialColumns: ColumnData[] = [
 ];
 
 const sampleTasks: ITaskData[] = [
-  { id: "t1", title: "Критичный баг", description: "Починить логин", status: "todo", priority: "highest", deadline: "2023-10-01" }, // Просрочена
-  { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "todo", priority: "low" },
+  { id: "t1", title: "Критичный баг", description: "Починить логин", status: "todo", priority: "highest", deadline: "2023-10-01", username: "Ivan" },
+  { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "todo", priority: "low", username: "Maria" },
   { id: "t3", title: "Без приоритета", description: "Когда-нибудь", status: "todo", deadline: "2025-12-31" },
 ];
 
@@ -63,7 +63,8 @@ const KanbanFlow: React.FC = () => {
   const [formDesc, setFormDesc] = useState("");
   const [formStatus, setFormStatus] = useState<ITaskData['status']>("todo");
   const [formPriority, setFormPriority] = useState<Priority | "none">("none");
-  const [formDeadline, setFormDeadline] = useState(""); // Новое поле для даты
+  const [formDeadline, setFormDeadline] = useState("");
+  const [formUser, setFormUser] = useState(""); // Новое поле для юзера
 
   const openAddModal = useCallback((colId: string) => {
     setEditingTaskId(null);
@@ -72,6 +73,7 @@ const KanbanFlow: React.FC = () => {
     setFormStatus(colId as ITaskData['status']);
     setFormPriority("none");
     setFormDeadline("");
+    setFormUser(""); // Сброс юзера
     setModalOpen(true);
   }, []);
 
@@ -81,7 +83,8 @@ const KanbanFlow: React.FC = () => {
     setFormDesc(task.description || "");
     setFormStatus(task.status);
     setFormPriority(task.priority || "none");
-    setFormDeadline(task.deadline || ""); // Загружаем дату
+    setFormDeadline(task.deadline || "");
+    setFormUser(task.username || ""); // Загрузка юзера
     setModalOpen(true);
   }, []);
 
@@ -89,8 +92,8 @@ const KanbanFlow: React.FC = () => {
     if (!formTitle.trim()) return;
 
     const priorityValue = formPriority === "none" ? undefined : formPriority;
-    // Если дата пустая, сохраняем undefined
     const deadlineValue = formDeadline === "" ? undefined : formDeadline;
+    const userValue = formUser.trim() === "" ? undefined : formUser;
 
     setTasks((prev) => {
       if (editingTaskId) {
@@ -102,7 +105,8 @@ const KanbanFlow: React.FC = () => {
                 description: formDesc, 
                 status: formStatus, 
                 priority: priorityValue,
-                deadline: deadlineValue 
+                deadline: deadlineValue,
+                username: userValue // Сохраняем юзера
               }
             : t
         );
@@ -114,11 +118,12 @@ const KanbanFlow: React.FC = () => {
         status: formStatus,
         priority: priorityValue,
         deadline: deadlineValue,
+        username: userValue, // Сохраняем юзера
       };
       return [...prev, newTask];
     });
     setModalOpen(false);
-  }, [editingTaskId, formTitle, formDesc, formStatus, formPriority, formDeadline]);
+  }, [editingTaskId, formTitle, formDesc, formStatus, formPriority, formDeadline, formUser]);
 
   const getColumnHeight = useCallback((taskCount: number) => {
     const contentHeight = 
@@ -183,7 +188,7 @@ const KanbanFlow: React.FC = () => {
     return nodesArr;
   }, [columns, tasks, openAddModal, openEditModal, getColumnHeight]);
 
-  // Drag and Drop (без изменений, но нужен для контекста)
+  // Drag and Drop Logic
   const onNodeDragStop: NodeDragHandler = useCallback(
     (_, node) => {
       if (node.type === "column") {
@@ -199,11 +204,10 @@ const KanbanFlow: React.FC = () => {
       if (node.type === "task") {
         const centerX = node.position.x + TASK_WIDTH / 2;
         const centerY = node.position.y + TASK_HEIGHT / 2;
-
+        
         const targetColumn = columns.find((col) => {
             const tasksInCol = tasks.filter(t => t.status === col.id).length;
             const currentHeight = getColumnHeight(tasksInCol);
-
             return (
                 centerX >= col.x && 
                 centerX <= col.x + col.width &&
@@ -211,7 +215,6 @@ const KanbanFlow: React.FC = () => {
                 centerY <= col.y + currentHeight
             );
         });
-        
         if (targetColumn) {
           setTasks((prev) =>
             prev.map((t) =>
@@ -256,6 +259,17 @@ const KanbanFlow: React.FC = () => {
                 onChange={(e) => setFormDesc(e.target.value)}
             />
             
+            {/* Поле Ответственный */}
+             <div>
+                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Ответственный:</label>
+                 <input 
+                    className="modal-input"
+                    placeholder="Имя пользователя"
+                    value={formUser}
+                    onChange={(e) => setFormUser(e.target.value)}
+                 />
+            </div>
+
             <div style={{ display: 'flex', gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Статус:</label>
@@ -287,7 +301,6 @@ const KanbanFlow: React.FC = () => {
               </div>
             </div>
             
-            {/* Поле Дедлайн */}
             <div>
                  <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Дедлайн:</label>
                  <input 
