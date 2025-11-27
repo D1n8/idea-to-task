@@ -1,12 +1,12 @@
 export type Priority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
-export type Status = "todo" | "inprogress" | "done";
 
 export interface ITaskData {
   id: string;
   title: string;
   description?: string;
-  status: Status;
-  priority?: Priority; 
+  status: "todo" | "inprogress" | "done";
+  priority?: Priority;
+  deadline?: string; // Формат YYYY-MM-DD
 }
 
 export interface ColumnData {

@@ -13,13 +13,13 @@ import TaskNode from "./TaskNode";
 import Modal from "./Modal";
 import type { ColumnData, ITaskData, Priority } from "../modules";
 
-// --- КОНСТАНТЫ ---
+// --- КОНСТАНТЫ (без изменений) ---
 const MIN_COLUMN_HEIGHT = 600;
 const COLUMN_WIDTH = 320;
 const COLUMN_HEADER_HEIGHT = 60;
 const NODE_PADDING = 16;
 const TASK_WIDTH = COLUMN_WIDTH - NODE_PADDING * 2;
-const TASK_HEIGHT = 80;
+const TASK_HEIGHT = 100; // Немного увеличим высоту задачи, чтобы влезла дата
 const TASK_GAP = 12;
 
 const initialColumns: ColumnData[] = [
@@ -29,9 +29,9 @@ const initialColumns: ColumnData[] = [
 ];
 
 const sampleTasks: ITaskData[] = [
-  { id: "t1", title: "Критичный баг", description: "Починить логин", status: "todo", priority: "highest" },
+  { id: "t1", title: "Критичный баг", description: "Починить логин", status: "todo", priority: "highest", deadline: "2023-10-01" }, // Просрочена
   { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "todo", priority: "low" },
-  { id: "t3", title: "Без приоритета", description: "Когда-нибудь", status: "todo" },
+  { id: "t3", title: "Без приоритета", description: "Когда-нибудь", status: "todo", deadline: "2025-12-31" },
 ];
 
 const nodeTypes: NodeTypes = {
@@ -39,7 +39,6 @@ const nodeTypes: NodeTypes = {
   task: TaskNode,
 };
 
-// Хелпер для веса приоритета (чем больше число, тем выше задача)
 const getPriorityWeight = (p?: Priority): number => {
   switch (p) {
     case "highest": return 5;
@@ -47,7 +46,7 @@ const getPriorityWeight = (p?: Priority): number => {
     case "medium": return 3;
     case "low": return 2;
     case "lowest": return 1;
-    default: return 0; // Нет приоритета
+    default: return 0;
   }
 };
 
@@ -63,8 +62,8 @@ const KanbanFlow: React.FC = () => {
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formStatus, setFormStatus] = useState<ITaskData['status']>("todo");
-  // "undefined" строка для select, чтобы обозначить отсутствие приоритета
   const [formPriority, setFormPriority] = useState<Priority | "none">("none");
+  const [formDeadline, setFormDeadline] = useState(""); // Новое поле для даты
 
   const openAddModal = useCallback((colId: string) => {
     setEditingTaskId(null);
@@ -72,6 +71,7 @@ const KanbanFlow: React.FC = () => {
     setFormDesc("");
     setFormStatus(colId as ITaskData['status']);
     setFormPriority("none");
+    setFormDeadline("");
     setModalOpen(true);
   }, []);
 
@@ -81,20 +81,29 @@ const KanbanFlow: React.FC = () => {
     setFormDesc(task.description || "");
     setFormStatus(task.status);
     setFormPriority(task.priority || "none");
+    setFormDeadline(task.deadline || ""); // Загружаем дату
     setModalOpen(true);
   }, []);
 
   const handleSave = useCallback(() => {
     if (!formTitle.trim()) return;
 
-    // Преобразуем "none" обратно в undefined для данных
     const priorityValue = formPriority === "none" ? undefined : formPriority;
+    // Если дата пустая, сохраняем undefined
+    const deadlineValue = formDeadline === "" ? undefined : formDeadline;
 
     setTasks((prev) => {
       if (editingTaskId) {
         return prev.map((t) => 
           t.id === editingTaskId 
-            ? { ...t, title: formTitle, description: formDesc, status: formStatus, priority: priorityValue }
+            ? { 
+                ...t, 
+                title: formTitle, 
+                description: formDesc, 
+                status: formStatus, 
+                priority: priorityValue,
+                deadline: deadlineValue 
+              }
             : t
         );
       }
@@ -104,11 +113,12 @@ const KanbanFlow: React.FC = () => {
         description: formDesc,
         status: formStatus,
         priority: priorityValue,
+        deadline: deadlineValue,
       };
       return [...prev, newTask];
     });
     setModalOpen(false);
-  }, [editingTaskId, formTitle, formDesc, formStatus, formPriority]);
+  }, [editingTaskId, formTitle, formDesc, formStatus, formPriority, formDeadline]);
 
   const getColumnHeight = useCallback((taskCount: number) => {
     const contentHeight = 
@@ -119,29 +129,23 @@ const KanbanFlow: React.FC = () => {
     return Math.max(contentHeight, MIN_COLUMN_HEIGHT);
   }, []);
 
-  // --- ГЕНЕРАЦИЯ УЗЛОВ С СОРТИРОВКОЙ ---
+  // --- ГЕНЕРАЦИЯ УЗЛОВ ---
   const nodes: Node[] = useMemo(() => {
     const nodesArr: Node[] = [];
 
-    // Группируем задачи
     const tasksByStatus: Record<string, ITaskData[]> = { todo: [], inprogress: [], done: [] };
-    
-    // Сначала заполняем группы
     tasks.forEach((t) => {
         if(tasksByStatus[t.status]) tasksByStatus[t.status].push(t);
     });
 
-    // ТЕПЕРЬ СОРТИРУЕМ ВНУТРИ ГРУПП
     Object.keys(tasksByStatus).forEach((key) => {
       tasksByStatus[key].sort((a, b) => {
         const weightA = getPriorityWeight(a.priority);
         const weightB = getPriorityWeight(b.priority);
-        // Сортировка по убыванию веса (Highest -> Lowest -> None)
         return weightB - weightA;
       });
     });
 
-    // Создаем узлы колонок
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       const dynamicHeight = getColumnHeight(colTasks.length);
@@ -150,11 +154,7 @@ const KanbanFlow: React.FC = () => {
         id: `col-${col.id}`,
         type: "column",
         position: { x: col.x, y: col.y },
-        data: { 
-            ...col, 
-            height: dynamicHeight, 
-            onAdd: openAddModal 
-        },
+        data: { ...col, height: dynamicHeight, onAdd: openAddModal },
         draggable: true,
         zIndex: 0,
         width: col.width,
@@ -162,7 +162,6 @@ const KanbanFlow: React.FC = () => {
       });
     });
 
-    // Создаем узлы задач (уже отсортированные)
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       colTasks.forEach((task, index) => {
@@ -184,6 +183,7 @@ const KanbanFlow: React.FC = () => {
     return nodesArr;
   }, [columns, tasks, openAddModal, openEditModal, getColumnHeight]);
 
+  // Drag and Drop (без изменений, но нужен для контекста)
   const onNodeDragStop: NodeDragHandler = useCallback(
     (_, node) => {
       if (node.type === "column") {
@@ -211,7 +211,7 @@ const KanbanFlow: React.FC = () => {
                 centerY <= col.y + currentHeight
             );
         });
-
+        
         if (targetColumn) {
           setTasks((prev) =>
             prev.map((t) =>
@@ -285,6 +285,17 @@ const KanbanFlow: React.FC = () => {
                     <option value="lowest">Lowest (🟢)</option>
                 </select>
               </div>
+            </div>
+            
+            {/* Поле Дедлайн */}
+            <div>
+                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Дедлайн:</label>
+                 <input 
+                    type="date"
+                    className="modal-input"
+                    value={formDeadline}
+                    onChange={(e) => setFormDeadline(e.target.value)}
+                 />
             </div>
 
             <div className="modal-actions" style={{ marginTop: 8 }}>
