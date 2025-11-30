@@ -14,24 +14,24 @@ import Modal from "./Modal";
 import type { ColumnData, ITaskData, Priority } from "../modules";
 
 // --- КОНСТАНТЫ ---
-const MIN_COLUMN_HEIGHT = 600;
+const MIN_COLUMN_HEIGHT = 200;
 const COLUMN_WIDTH = 320;
 const COLUMN_HEADER_HEIGHT = 60;
+const ADD_BUTTON_HEIGHT = 50;
 const NODE_PADDING = 16;
 const TASK_WIDTH = COLUMN_WIDTH - NODE_PADDING * 2;
-const TASK_HEIGHT = 110; // Еще немного увеличим высоту, чтобы элементы не слипались
+const TASK_HEIGHT = 110;
 const TASK_GAP = 12;
 
 const initialColumns: ColumnData[] = [
-  { id: "todo", title: "To do", x: 50, y: 50, width: COLUMN_WIDTH, height: MIN_COLUMN_HEIGHT },
-  { id: "inprogress", title: "In progress", x: 400, y: 50, width: COLUMN_WIDTH, height: MIN_COLUMN_HEIGHT },
-  { id: "done", title: "Done", x: 750, y: 50, width: COLUMN_WIDTH, height: MIN_COLUMN_HEIGHT },
+  { id: "todo", title: "To do", x: 50, y: 50, width: COLUMN_WIDTH, height: 600 },
+  { id: "inprogress", title: "In progress", x: 400, y: 50, width: COLUMN_WIDTH, height: 600 },
+  { id: "done", title: "Done", x: 750, y: 50, width: COLUMN_WIDTH, height: 600 },
 ];
 
 const sampleTasks: ITaskData[] = [
   { id: "t1", title: "Критичный баг", description: "Починить логин", status: "todo", priority: "highest", deadline: "2023-10-01", username: "Ivan" },
-  { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "todo", priority: "low", username: "Maria" },
-  { id: "t3", title: "Без приоритета", description: "Когда-нибудь", status: "todo", deadline: "2025-12-31" },
+  { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "inprogress", priority: "low", username: "Maria" },
 ];
 
 const nodeTypes: NodeTypes = {
@@ -53,28 +53,71 @@ const getPriorityWeight = (p?: Priority): number => {
 const KanbanFlow: React.FC = () => {
   const [columns, setColumns] = useState<ColumnData[]>(initialColumns);
   const [tasks, setTasks] = useState<ITaskData[]>(sampleTasks);
+  const [activeMenuColId, setActiveMenuColId] = useState<string | null>(null);
 
-  // --- Modal State ---
-  const [modalOpen, setModalOpen] = useState(false);
+  // --- Modal States ---
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  
-  // Поля формы
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+
+  // Form Fields
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
-  const [formStatus, setFormStatus] = useState<ITaskData['status']>("todo");
+  const [formStatus, setFormStatus] = useState<string>("todo");
   const [formPriority, setFormPriority] = useState<Priority | "none">("none");
   const [formDeadline, setFormDeadline] = useState("");
-  const [formUser, setFormUser] = useState(""); // Новое поле для юзера
+  const [formUser, setFormUser] = useState("");
 
+  // --- LOGIC: COLUMNS ---
+  const handleCreateColumn = useCallback(() => {
+    const newId = nanoid();
+    const newColumn: ColumnData = {
+      id: newId,
+      title: "Новая колонка",
+      x: columns.length > 0 ? columns[columns.length - 1].x + COLUMN_WIDTH + 50 : 50,
+      y: 50,
+      width: COLUMN_WIDTH,
+      height: 500,
+      isEditing: true,
+    };
+    setColumns((prev) => [...prev, newColumn]);
+  }, [columns]);
+
+  const handleRenameColumn = useCallback((colId: string, newTitle: string) => {
+    setColumns((prev) => 
+      prev.map(c => c.id === colId ? { ...c, title: newTitle, isEditing: false } : c)
+    );
+  }, []);
+
+  const confirmDeleteColumn = useCallback((colId: string) => {
+    setColumnToDelete(colId);
+    setDeleteModalOpen(true);
+  }, []);
+
+  const handleDeleteColumn = useCallback(() => {
+    if (!columnToDelete) return;
+    setColumns((prev) => prev.filter(c => c.id !== columnToDelete));
+    setTasks((prev) => prev.filter(t => t.status !== columnToDelete));
+    setDeleteModalOpen(false);
+    setColumnToDelete(null);
+  }, [columnToDelete]);
+
+  const toggleColumnMenu = useCallback((colId: string, isOpen: boolean) => {
+    setActiveMenuColId(isOpen ? colId : null);
+  }, []);
+
+
+  // --- LOGIC: TASKS ---
   const openAddModal = useCallback((colId: string) => {
     setEditingTaskId(null);
     setFormTitle("");
     setFormDesc("");
-    setFormStatus(colId as ITaskData['status']);
+    setFormStatus(colId);
     setFormPriority("none");
     setFormDeadline("");
-    setFormUser(""); // Сброс юзера
-    setModalOpen(true);
+    setFormUser("");
+    setTaskModalOpen(true);
   }, []);
 
   const openEditModal = useCallback((task: ITaskData) => {
@@ -84,11 +127,11 @@ const KanbanFlow: React.FC = () => {
     setFormStatus(task.status);
     setFormPriority(task.priority || "none");
     setFormDeadline(task.deadline || "");
-    setFormUser(task.username || ""); // Загрузка юзера
-    setModalOpen(true);
+    setFormUser(task.username || "");
+    setTaskModalOpen(true);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSaveTask = useCallback(() => {
     if (!formTitle.trim()) return;
 
     const priorityValue = formPriority === "none" ? undefined : formPriority;
@@ -99,15 +142,7 @@ const KanbanFlow: React.FC = () => {
       if (editingTaskId) {
         return prev.map((t) => 
           t.id === editingTaskId 
-            ? { 
-                ...t, 
-                title: formTitle, 
-                description: formDesc, 
-                status: formStatus, 
-                priority: priorityValue,
-                deadline: deadlineValue,
-                username: userValue // Сохраняем юзера
-              }
+            ? { ...t, title: formTitle, description: formDesc, status: formStatus, priority: priorityValue, deadline: deadlineValue, username: userValue }
             : t
         );
       }
@@ -118,27 +153,28 @@ const KanbanFlow: React.FC = () => {
         status: formStatus,
         priority: priorityValue,
         deadline: deadlineValue,
-        username: userValue, // Сохраняем юзера
+        username: userValue,
       };
       return [...prev, newTask];
     });
-    setModalOpen(false);
+    setTaskModalOpen(false);
   }, [editingTaskId, formTitle, formDesc, formStatus, formPriority, formDeadline, formUser]);
 
+  // --- HEIGHT CALCULATION ---
   const getColumnHeight = useCallback((taskCount: number) => {
     const contentHeight = 
-      COLUMN_HEADER_HEIGHT + 
-      NODE_PADDING + 
+      COLUMN_HEADER_HEIGHT + NODE_PADDING + 
       (taskCount * (TASK_HEIGHT + TASK_GAP)) + 
-      NODE_PADDING;
+      NODE_PADDING + ADD_BUTTON_HEIGHT; 
     return Math.max(contentHeight, MIN_COLUMN_HEIGHT);
   }, []);
 
-  // --- ГЕНЕРАЦИЯ УЗЛОВ ---
+  // --- NODES GENERATION ---
   const nodes: Node[] = useMemo(() => {
     const nodesArr: Node[] = [];
+    const tasksByStatus: Record<string, ITaskData[]> = {};
+    columns.forEach(c => { tasksByStatus[c.id] = [] });
 
-    const tasksByStatus: Record<string, ITaskData[]> = { todo: [], inprogress: [], done: [] };
     tasks.forEach((t) => {
         if(tasksByStatus[t.status]) tasksByStatus[t.status].push(t);
     });
@@ -151,22 +187,34 @@ const KanbanFlow: React.FC = () => {
       });
     });
 
+    // 1. Columns
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       const dynamicHeight = getColumnHeight(colTasks.length);
+      const isMenuOpen = activeMenuColId === col.id;
 
       nodesArr.push({
         id: `col-${col.id}`,
         type: "column",
         position: { x: col.x, y: col.y },
-        data: { ...col, height: dynamicHeight, onAdd: openAddModal },
+        data: { 
+            ...col, 
+            height: dynamicHeight, 
+            isMenuOpen: isMenuOpen, 
+            onToggleMenu: toggleColumnMenu, 
+            onAddTask: openAddModal,
+            onDelete: confirmDeleteColumn,
+            onRename: handleRenameColumn,
+            onAddColumn: handleCreateColumn
+        },
         draggable: true,
-        zIndex: 0,
+        zIndex: isMenuOpen ? 100 : 0, 
         width: col.width,
         height: dynamicHeight,
       });
     });
 
+    // 2. Tasks
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       colTasks.forEach((task, index) => {
@@ -186,9 +234,9 @@ const KanbanFlow: React.FC = () => {
     });
 
     return nodesArr;
-  }, [columns, tasks, openAddModal, openEditModal, getColumnHeight]);
+  }, [columns, tasks, activeMenuColId, openAddModal, openEditModal, getColumnHeight, confirmDeleteColumn, handleRenameColumn, handleCreateColumn, toggleColumnMenu]);
 
-  // Drag and Drop Logic
+  // --- DRAG AND DROP ---
   const onNodeDragStop: NodeDragHandler = useCallback(
     (_, node) => {
       if (node.type === "column") {
@@ -200,11 +248,9 @@ const KanbanFlow: React.FC = () => {
         );
         return;
       }
-
       if (node.type === "task") {
         const centerX = node.position.x + TASK_WIDTH / 2;
         const centerY = node.position.y + TASK_HEIGHT / 2;
-        
         const targetColumn = columns.find((col) => {
             const tasksInCol = tasks.filter(t => t.status === col.id).length;
             const currentHeight = getColumnHeight(tasksInCol);
@@ -218,7 +264,7 @@ const KanbanFlow: React.FC = () => {
         if (targetColumn) {
           setTasks((prev) =>
             prev.map((t) =>
-              t.id === node.id ? { ...t, status: targetColumn.id as any } : t
+              t.id === node.id ? { ...t, status: targetColumn.id } : t
             )
           );
         }
@@ -236,61 +282,31 @@ const KanbanFlow: React.FC = () => {
         fitView
         elementsSelectable={false}
         minZoom={0.1}
+        onPaneClick={() => setActiveMenuColId(null)}
       >
         <Background gap={20} />
       </ReactFlow>
 
+      {/* --- Task Modal --- */}
       <Modal
-        open={modalOpen}
+        open={taskModalOpen}
         title={editingTaskId ? "Редактировать задачу" : "Добавить задачу"}
-        onClose={() => setModalOpen(false)}
+        onClose={() => setTaskModalOpen(false)}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input
-                className="modal-input"
-                placeholder="Название"
-                value={formTitle}
-                onChange={(e) => setFormTitle(e.target.value)}
-            />
-            <textarea
-                className="modal-textarea"
-                placeholder="Описание"
-                value={formDesc}
-                onChange={(e) => setFormDesc(e.target.value)}
-            />
-            
-            {/* Поле Ответственный */}
-             <div>
-                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Ответственный:</label>
-                 <input 
-                    className="modal-input"
-                    placeholder="Имя пользователя"
-                    value={formUser}
-                    onChange={(e) => setFormUser(e.target.value)}
-                 />
-            </div>
+        <input className="modal-input" placeholder="Название" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} />
+        <textarea className="modal-textarea" placeholder="Описание" value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
+        <input className="modal-input" placeholder="Имя пользователя" value={formUser} onChange={(e) => setFormUser(e.target.value)} />
 
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Статус:</label>
-                <select 
-                    className="modal-input"
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value as ITaskData['status'])}
-                >
-                    <option value="todo">To Do</option>
-                    <option value="inprogress">In Progress</option>
-                    <option value="done">Done</option>
+        <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, color: '#666' }}>Статус:</label>
+                <select className="modal-input" value={formStatus} onChange={(e) => setFormStatus(e.target.value)}>
+                    {columns.map(col => (<option key={col.id} value={col.id}>{col.title}</option>))}
                 </select>
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Приоритет:</label>
-                <select 
-                    className="modal-input"
-                    value={formPriority}
-                    onChange={(e) => setFormPriority(e.target.value as Priority | "none")}
-                >
+            </div>
+            <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, color: '#666' }}>Приоритет:</label>
+                <select className="modal-input" value={formPriority} onChange={(e) => setFormPriority(e.target.value as Priority | "none")}>
                     <option value="none">Нет приоритета</option>
                     <option value="highest">Highest (🔴)</option>
                     <option value="high">High (🟠)</option>
@@ -298,26 +314,29 @@ const KanbanFlow: React.FC = () => {
                     <option value="low">Low (🔵)</option>
                     <option value="lowest">Lowest (🟢)</option>
                 </select>
-              </div>
-            </div>
-            
-            <div>
-                 <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>Дедлайн:</label>
-                 <input 
-                    type="date"
-                    className="modal-input"
-                    value={formDeadline}
-                    onChange={(e) => setFormDeadline(e.target.value)}
-                 />
-            </div>
-
-            <div className="modal-actions" style={{ marginTop: 8 }}>
-                <button onClick={() => setModalOpen(false)}>Отмена</button>
-                <button onClick={handleSave} disabled={!formTitle} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>
-                    Сохранить
-                </button>
             </div>
         </div>
+        <div>
+             <label style={{ fontSize: 12, color: '#666' }}>Дедлайн:</label>
+             <input type="date" className="modal-input" value={formDeadline} onChange={(e) => setFormDeadline(e.target.value)} />
+        </div>
+
+        <div className="modal-actions">
+            <button onClick={() => setTaskModalOpen(false)}>Отмена</button>
+            <button onClick={handleSaveTask} disabled={!formTitle} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>Сохранить</button>
+        </div>
+      </Modal>
+
+      {/* --- Delete Column Modal --- */}
+      <Modal open={deleteModalOpen} title="Удаление колонки" onClose={() => setDeleteModalOpen(false)}>
+          <div style={{ paddingBottom: 16 }}>
+              <p>Вы уверены, что хотите удалить эту колонку?</p>
+              <p style={{ color: '#ef4444', fontSize: 14 }}>Все задачи ({columnToDelete ? tasks.filter(t => t.status === columnToDelete).length : 0}) внутри этой колонки будут удалены.</p>
+          </div>
+          <div className="modal-actions">
+                <button onClick={() => setDeleteModalOpen(false)}>Отмена</button>
+                <button onClick={handleDeleteColumn} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>Удалить</button>
+          </div>
       </Modal>
     </div>
   );

@@ -85,3 +85,80 @@
   gap: 12px;
   justify-content: flex-end;
 }
+
+/* Кнопка управления колонкой (троеточие) */
+.column-menu-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.column-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Выпадающее меню */
+.column-dropdown {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.column-dropdown button {
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+}
+
+.column-dropdown button:hover {
+  background: #f3f4f6;
+}
+
+.column-dropdown button.delete-btn {
+  color: #ef4444;
+}
+.column-dropdown button.delete-btn:hover {
+  background: #fef2f2;
+}
+
+/* Кнопка добавления задачи снизу */
+.add-task-btn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s, color 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.add-task-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}

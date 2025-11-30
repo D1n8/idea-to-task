@@ -4,10 +4,10 @@ export interface ITaskData {
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "inprogress" | "done";
+  status: string; 
   priority?: Priority;
   deadline?: string;
-  username?: string; 
+  username?: string;
 }
 
 export interface ColumnData {
@@ -17,4 +17,6 @@ export interface ColumnData {
   y: number;
   width: number;
   height: number;
+  isEditing?: boolean;
+  isMenuOpen?: boolean;
 }
