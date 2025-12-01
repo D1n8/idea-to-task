@@ -2,10 +2,12 @@ import React from "react";
 import type { NodeProps } from "reactflow";
 import type { ITaskData, Priority } from "../modules";
 
+// Добавляем isDone в тип пропсов
 type TaskNodeData = ITaskData & {
   width: number;
   height: number;
   onEdit: (task: ITaskData) => void;
+  isDone: boolean; // Рассчитывается в KanbanFlow
 };
 
 const priorityColors: Record<Priority, string> = {
@@ -17,9 +19,9 @@ const priorityColors: Record<Priority, string> = {
 };
 
 const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
-  const isDone = data.status === "done";
+  // Используем переданный проп, а не проверяем строку
+  const isDone = data.isDone; 
   
-  // Проверка на просрочку
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const deadlineDate = data.deadline ? new Date(data.deadline) : null;
@@ -27,12 +29,10 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
 
   const priorityColor = data.priority ? priorityColors[data.priority] : null;
 
-  // Цвет границы
   let borderColor = "1px solid #d1d5db";
   if (isDone) borderColor = "2px solid #22c55e";
   else if (isOverdue) borderColor = "2px solid #ef4444";
 
-  // Форматирование даты
   const formattedDate = deadlineDate 
     ? deadlineDate.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) 
     : null;
@@ -48,47 +48,26 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
         padding: "12px",
         border: borderColor,
         boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        display: "flex",
-        flexDirection: "column",
-        cursor: "grab",
-        boxSizing: "border-box",
-        position: "relative",
-        opacity: isDone ? 0.8 : 1,
+        display: "flex", flexDirection: "column",
+        cursor: "grab", boxSizing: "border-box", position: "relative",
+        opacity: isDone ? 0.7 : 1,
         transition: "border 0.2s, opacity 0.2s",
       }}
     >
-      {/* --- HEADER --- */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
         <div
           style={{
-            fontWeight: 600,
-            fontSize: "14px",
-            marginRight: 24,
+            fontWeight: 600, fontSize: "14px", marginRight: 24,
             textDecoration: isDone ? "line-through" : "none",
             color: isDone ? "#9ca3af" : isOverdue ? "#ef4444" : "#1f2937",
           }}
         >
           {data.title}
         </div>
-
         <button
           className="nodrag"
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onEdit(data);
-          }}
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            padding: 4,
-            color: "#9ca3af",
-            display: "flex",
-            alignItems: "center",
-          }}
+          onClick={(e) => { e.stopPropagation(); data.onEdit(data); }}
+          style={{ position: "absolute", top: 8, right: 8, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: "#9ca3af", display: "flex", alignItems: "center" }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -97,60 +76,19 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
         </button>
       </div>
 
-      {/* --- BODY --- */}
       {data.description && (
-        <div
-          style={{
-            fontSize: "12px",
-            color: isDone ? "#9ca3af" : "#6b7280",
-            textDecoration: isDone ? "line-through" : "none",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            marginBottom: "auto", 
-          }}
-        >
+        <div style={{ fontSize: "12px", color: isDone ? "#9ca3af" : "#6b7280", textDecoration: isDone ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: "auto" }}>
           {data.description}
         </div>
       )}
 
-      {/* --- FOOTER --- */}
-      <div 
-        style={{ 
-          marginTop: 'auto', 
-          display: 'flex', 
-          justifyContent: 'space-between', // Разносим левую и правую части
-          alignItems: 'center', 
-          paddingTop: 8 
-        }}
-      >
-        {/* ЛЕВАЯ ЧАСТЬ: Приоритет и Дата */}
+      <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
            {priorityColor && (
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                backgroundColor: priorityColor,
-                border: "1px solid rgba(0,0,0,0.1)",
-              }}
-              title={`Приоритет: ${data.priority}`}
-            />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: priorityColor, border: "1px solid rgba(0,0,0,0.1)" }} title={`Приоритет: ${data.priority}`} />
           )}
-
-          <div 
-            style={{ 
-              fontSize: 11, 
-              color: isOverdue ? "#ef4444" : "#6b7280", 
-              fontWeight: isOverdue ? 600 : 400,
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            {data.deadline ? (
-              <span>{formattedDate}</span>
-            ) : (
+          <div style={{ fontSize: 11, color: isOverdue ? "#ef4444" : "#6b7280", fontWeight: isOverdue ? 600 : 400, display: 'flex', alignItems: 'center' }}>
+            {data.deadline ? <span>{formattedDate}</span> : (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                 <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -160,36 +98,13 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
             )}
           </div>
         </div>
-
-        {/* ПРАВАЯ ЧАСТЬ: Пользователь (если есть) */}
         {data.username && (
-            <div 
-                style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 4, 
-                    background: '#f3f4f6', 
-                    padding: '2px 6px', 
-                    borderRadius: 12,
-                    maxWidth: '110px'
-                }}
-                title={`Ответственный: ${data.username}`}
-            >
-                {/* Иконка пользователя */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f3f4f6', padding: '2px 6px', borderRadius: 12, maxWidth: '110px' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                <span 
-                    style={{ 
-                        fontSize: 10, 
-                        fontWeight: 500, 
-                        color: '#374151',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                    }}
-                >
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {data.username}
                 </span>
             </div>

@@ -18,4 +18,5 @@ export interface ColumnData {
   width: number;
   height: number;
   isEditing?: boolean;
+  isDoneColumn?: boolean;
 }
