@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import ReactDOM from "react-dom";
 import type { NodeProps } from "reactflow";
 import type { ColumnData } from "../modules";
 
@@ -7,17 +8,18 @@ type ColumnNodeData = ColumnData & {
   onDelete: (colId: string) => void;
   onRename: (colId: string, newTitle: string) => void;
   onAddColumn: () => void;
-  // Новые пропсы
-  isMenuOpen: boolean;
-  onToggleMenu: (colId: string, isOpen: boolean) => void;
 };
 
 const ColumnNode: React.FC<NodeProps<ColumnNodeData>> = ({ data }) => {
-  // Убираем локальный стейт menuOpen, используем data.isMenuOpen
   const [isEditing, setIsEditing] = useState(data.isEditing || false);
   const [title, setTitle] = useState(data.title);
   
+  // Состояние для меню: открыто/закрыто и координаты
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  
   const inputRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -25,12 +27,42 @@ const ColumnNode: React.FC<NodeProps<ColumnNodeData>> = ({ data }) => {
     }
   }, [isEditing]);
 
+  // Обработчик открытия меню
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+
+    // Вычисляем позицию кнопки на экране
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + 5, // Чуть ниже кнопки
+        left: rect.left - 130 + rect.width, // Сдвиг влево, чтобы меню не уходило за экран
+      });
+      setMenuOpen(true);
+    }
+  };
+
+  // Закрытие меню при клике в любое место окна
+  useEffect(() => {
+    const handleClickOutside = () => setMenuOpen(false);
+    if (menuOpen) {
+      window.addEventListener("click", handleClickOutside);
+    }
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, [menuOpen]);
+
   const handleRename = () => {
     setIsEditing(false);
-    if (title.trim()) {
+    // Проверка на пустоту (валидация на дубликат будет в родителе)
+    if (title.trim() && title !== data.title) {
       data.onRename(data.id, title);
     } else {
-      setTitle(data.title);
+      setTitle(data.title); // Возврат старого, если отменили
     }
   };
 
@@ -46,28 +78,21 @@ const ColumnNode: React.FC<NodeProps<ColumnNodeData>> = ({ data }) => {
         background: "#f3f4f6",
         border: "1px solid #e5e7eb",
         borderRadius: 12,
-        display: "flex",
-        flexDirection: "column",
+        display: "flex", flexDirection: "column",
         position: 'relative',
       }}
-      // При уходе мыши можно закрывать, если хотите, но лучше оставить клик
-      // onMouseLeave={() => data.onToggleMenu(data.id, false)} 
     >
+      {/* Header */}
       <div
         className="nodrag"
         style={{
           padding: "16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontWeight: "bold",
-          fontSize: "16px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          fontWeight: "bold", fontSize: "16px",
           borderBottom: "1px solid #e5e7eb",
           background: "#fff",
-          borderTopLeftRadius: 12,
-          borderTopRightRadius: 12,
-          height: 60,
-          boxSizing: 'border-box'
+          borderTopLeftRadius: 12, borderTopRightRadius: 12,
+          height: 60, boxSizing: 'border-box'
         }}
       >
         {isEditing ? (
@@ -80,18 +105,20 @@ const ColumnNode: React.FC<NodeProps<ColumnNodeData>> = ({ data }) => {
             style={{ width: "100%", padding: "4px 8px", border: "1px solid #3b82f6", borderRadius: 4, fontSize: 16, outline: "none" }}
           />
         ) : (
-          <span style={{ flex: 1, cursor: 'text' }} onDoubleClick={() => setIsEditing(true)}>
+          <span 
+            style={{ flex: 1, cursor: 'text', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} 
+            onDoubleClick={() => setIsEditing(true)}
+            title={data.title}
+          >
             {data.title}
           </span>
         )}
 
+        {/* Кнопка меню */}
         <button
+          ref={buttonRef}
           className="column-menu-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Переключаем состояние через родителя
-            data.onToggleMenu(data.id, !data.isMenuOpen);
-          }}
+          onClick={handleMenuClick}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="1"></circle>
@@ -100,33 +127,30 @@ const ColumnNode: React.FC<NodeProps<ColumnNodeData>> = ({ data }) => {
           </svg>
         </button>
 
-        {/* Используем data.isMenuOpen вместо локального стейта */}
-        {data.isMenuOpen && (
-          <div className="column-dropdown">
-            <button onClick={() => { 
-                data.onAddColumn(); 
-                data.onToggleMenu(data.id, false); // Закрываем
-            }}>
+        {/* Рендерим меню через Портал в body */}
+        {menuOpen && ReactDOM.createPortal(
+          <div 
+            className="column-dropdown-portal" 
+            style={{ top: menuPos.top, left: menuPos.left }}
+            onClick={(e) => e.stopPropagation()} // Чтобы клик внутри меню не закрывал его мгновенно
+          >
+            <button onClick={() => { data.onAddColumn(); setMenuOpen(false); }}>
               Создать колонку
             </button>
-            <button onClick={() => { 
-                setIsEditing(true); 
-                data.onToggleMenu(data.id, false); // Закрываем
-            }}>
+            <button onClick={() => { setIsEditing(true); setMenuOpen(false); }}>
               Редактировать
             </button>
-            <button className="delete-btn" onClick={() => { 
-                data.onDelete(data.id); 
-                data.onToggleMenu(data.id, false); // Закрываем
-            }}>
+            <button className="delete-btn" onClick={() => { data.onDelete(data.id); setMenuOpen(false); }}>
               Удалить
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
       
       <div style={{ flex: 1 }} />
 
+      {/* Footer Add Button */}
       <button
         className="add-task-btn nodrag"
         onClick={(e) => {

@@ -53,7 +53,6 @@ const getPriorityWeight = (p?: Priority): number => {
 const KanbanFlow: React.FC = () => {
   const [columns, setColumns] = useState<ColumnData[]>(initialColumns);
   const [tasks, setTasks] = useState<ITaskData[]>(sampleTasks);
-  const [activeMenuColId, setActiveMenuColId] = useState<string | null>(null);
 
   // --- Modal States ---
   const [taskModalOpen, setTaskModalOpen] = useState(false);
@@ -69,12 +68,27 @@ const KanbanFlow: React.FC = () => {
   const [formDeadline, setFormDeadline] = useState("");
   const [formUser, setFormUser] = useState("");
 
+  // 1. Оборачиваем getUniqueTitle в useCallback
+  const getUniqueTitle = useCallback((baseTitle: string, excludeId?: string) => {
+    let newTitle = baseTitle;
+    let counter = 1;
+    while (columns.some(col => col.title === newTitle && col.id !== excludeId)) {
+      newTitle = `${baseTitle} (${counter})`;
+      counter++;
+    }
+    return newTitle;
+  }, [columns]); // Зависит от columns
+
+  // 2. Обновляем handleCreateColumn
   // --- LOGIC: COLUMNS ---
   const handleCreateColumn = useCallback(() => {
     const newId = nanoid();
+    // Генерируем уникальное имя
+    const title = getUniqueTitle("Новая колонка");
+
     const newColumn: ColumnData = {
       id: newId,
-      title: "Новая колонка",
+      title: title,
       x: columns.length > 0 ? columns[columns.length - 1].x + COLUMN_WIDTH + 50 : 50,
       y: 50,
       width: COLUMN_WIDTH,
@@ -82,12 +96,30 @@ const KanbanFlow: React.FC = () => {
       isEditing: true,
     };
     setColumns((prev) => [...prev, newColumn]);
-  }, [columns]);
+  }, [columns, getUniqueTitle]); // Добавили getUniqueTitle в зависимости
 
   const handleRenameColumn = useCallback((colId: string, newTitle: string) => {
-    setColumns((prev) => 
-      prev.map(c => c.id === colId ? { ...c, title: newTitle, isEditing: false } : c)
-    );
+    setColumns((prev) => {
+      // Проверка уникальности внутри сеттера для актуальности, 
+      // но лучше использовать getUniqueTitle, если хотим авто-переименование,
+      // ИЛИ просто запретить дубликат.
+      // Здесь реализуем авто-исправление (добавление индекса), чтобы не ломать UX ошибками.
+
+      // Временная проверка на текущем состоянии
+      const isDuplicate = prev.some(c => c.title === newTitle && c.id !== colId);
+
+      let finalTitle = newTitle;
+      if (isDuplicate) {
+        alert("Колонка с таким именем уже существует! Имя будет изменено автоматически.");
+        let counter = 1;
+        while (prev.some(c => c.title === finalTitle && c.id !== colId)) {
+          finalTitle = `${newTitle} (${counter})`;
+          counter++;
+        }
+      }
+
+      return prev.map(c => c.id === colId ? { ...c, title: finalTitle, isEditing: false } : c);
+    });
   }, []);
 
   const confirmDeleteColumn = useCallback((colId: string) => {
@@ -102,10 +134,6 @@ const KanbanFlow: React.FC = () => {
     setDeleteModalOpen(false);
     setColumnToDelete(null);
   }, [columnToDelete]);
-
-  const toggleColumnMenu = useCallback((colId: string, isOpen: boolean) => {
-    setActiveMenuColId(isOpen ? colId : null);
-  }, []);
 
 
   // --- LOGIC: TASKS ---
@@ -140,8 +168,8 @@ const KanbanFlow: React.FC = () => {
 
     setTasks((prev) => {
       if (editingTaskId) {
-        return prev.map((t) => 
-          t.id === editingTaskId 
+        return prev.map((t) =>
+          t.id === editingTaskId
             ? { ...t, title: formTitle, description: formDesc, status: formStatus, priority: priorityValue, deadline: deadlineValue, username: userValue }
             : t
         );
@@ -162,10 +190,10 @@ const KanbanFlow: React.FC = () => {
 
   // --- HEIGHT CALCULATION ---
   const getColumnHeight = useCallback((taskCount: number) => {
-    const contentHeight = 
-      COLUMN_HEADER_HEIGHT + NODE_PADDING + 
-      (taskCount * (TASK_HEIGHT + TASK_GAP)) + 
-      NODE_PADDING + ADD_BUTTON_HEIGHT; 
+    const contentHeight =
+      COLUMN_HEADER_HEIGHT + NODE_PADDING +
+      (taskCount * (TASK_HEIGHT + TASK_GAP)) +
+      NODE_PADDING + ADD_BUTTON_HEIGHT;
     return Math.max(contentHeight, MIN_COLUMN_HEIGHT);
   }, []);
 
@@ -176,7 +204,7 @@ const KanbanFlow: React.FC = () => {
     columns.forEach(c => { tasksByStatus[c.id] = [] });
 
     tasks.forEach((t) => {
-        if(tasksByStatus[t.status]) tasksByStatus[t.status].push(t);
+      if (tasksByStatus[t.status]) tasksByStatus[t.status].push(t);
     });
 
     Object.keys(tasksByStatus).forEach((key) => {
@@ -191,24 +219,21 @@ const KanbanFlow: React.FC = () => {
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       const dynamicHeight = getColumnHeight(colTasks.length);
-      const isMenuOpen = activeMenuColId === col.id;
 
       nodesArr.push({
         id: `col-${col.id}`,
         type: "column",
         position: { x: col.x, y: col.y },
-        data: { 
-            ...col, 
-            height: dynamicHeight, 
-            isMenuOpen: isMenuOpen, 
-            onToggleMenu: toggleColumnMenu, 
-            onAddTask: openAddModal,
-            onDelete: confirmDeleteColumn,
-            onRename: handleRenameColumn,
-            onAddColumn: handleCreateColumn
+        data: {
+          ...col,
+          height: dynamicHeight,
+          onAddTask: openAddModal,
+          onDelete: confirmDeleteColumn,
+          onRename: handleRenameColumn,
+          onAddColumn: handleCreateColumn
         },
         draggable: true,
-        zIndex: isMenuOpen ? 100 : 0, 
+        zIndex: 0, // Всегда 0, так как меню теперь в Портале
         width: col.width,
         height: dynamicHeight,
       });
@@ -227,14 +252,14 @@ const KanbanFlow: React.FC = () => {
           position: { x, y },
           data: { ...task, width: TASK_WIDTH, height: TASK_HEIGHT, onEdit: openEditModal },
           draggable: true,
-          zIndex: 10,
-          extent: 'parent', 
+          zIndex: 10, // Всегда выше колонок
+          extent: 'parent',
         });
       });
     });
 
     return nodesArr;
-  }, [columns, tasks, activeMenuColId, openAddModal, openEditModal, getColumnHeight, confirmDeleteColumn, handleRenameColumn, handleCreateColumn, toggleColumnMenu]);
+  }, [columns, tasks, openAddModal, openEditModal, getColumnHeight, confirmDeleteColumn, handleRenameColumn, handleCreateColumn]);
 
   // --- DRAG AND DROP ---
   const onNodeDragStop: NodeDragHandler = useCallback(
@@ -252,14 +277,14 @@ const KanbanFlow: React.FC = () => {
         const centerX = node.position.x + TASK_WIDTH / 2;
         const centerY = node.position.y + TASK_HEIGHT / 2;
         const targetColumn = columns.find((col) => {
-            const tasksInCol = tasks.filter(t => t.status === col.id).length;
-            const currentHeight = getColumnHeight(tasksInCol);
-            return (
-                centerX >= col.x && 
-                centerX <= col.x + col.width &&
-                centerY >= col.y && 
-                centerY <= col.y + currentHeight
-            );
+          const tasksInCol = tasks.filter(t => t.status === col.id).length;
+          const currentHeight = getColumnHeight(tasksInCol);
+          return (
+            centerX >= col.x &&
+            centerX <= col.x + col.width &&
+            centerY >= col.y &&
+            centerY <= col.y + currentHeight
+          );
         });
         if (targetColumn) {
           setTasks((prev) =>
@@ -282,7 +307,6 @@ const KanbanFlow: React.FC = () => {
         fitView
         elementsSelectable={false}
         minZoom={0.1}
-        onPaneClick={() => setActiveMenuColId(null)}
       >
         <Background gap={20} />
       </ReactFlow>
@@ -298,45 +322,45 @@ const KanbanFlow: React.FC = () => {
         <input className="modal-input" placeholder="Имя пользователя" value={formUser} onChange={(e) => setFormUser(e.target.value)} />
 
         <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: '#666' }}>Статус:</label>
-                <select className="modal-input" value={formStatus} onChange={(e) => setFormStatus(e.target.value)}>
-                    {columns.map(col => (<option key={col.id} value={col.id}>{col.title}</option>))}
-                </select>
-            </div>
-            <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: '#666' }}>Приоритет:</label>
-                <select className="modal-input" value={formPriority} onChange={(e) => setFormPriority(e.target.value as Priority | "none")}>
-                    <option value="none">Нет приоритета</option>
-                    <option value="highest">Highest (🔴)</option>
-                    <option value="high">High (🟠)</option>
-                    <option value="medium">Medium (🟡)</option>
-                    <option value="low">Low (🔵)</option>
-                    <option value="lowest">Lowest (🟢)</option>
-                </select>
-            </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 12, color: '#666' }}>Статус:</label>
+            <select className="modal-input" value={formStatus} onChange={(e) => setFormStatus(e.target.value)}>
+              {columns.map(col => (<option key={col.id} value={col.id}>{col.title}</option>))}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 12, color: '#666' }}>Приоритет:</label>
+            <select className="modal-input" value={formPriority} onChange={(e) => setFormPriority(e.target.value as Priority | "none")}>
+              <option value="none">Нет приоритета</option>
+              <option value="highest">Highest (🔴)</option>
+              <option value="high">High (🟠)</option>
+              <option value="medium">Medium (🟡)</option>
+              <option value="low">Low (🔵)</option>
+              <option value="lowest">Lowest (🟢)</option>
+            </select>
+          </div>
         </div>
         <div>
-             <label style={{ fontSize: 12, color: '#666' }}>Дедлайн:</label>
-             <input type="date" className="modal-input" value={formDeadline} onChange={(e) => setFormDeadline(e.target.value)} />
+          <label style={{ fontSize: 12, color: '#666' }}>Дедлайн:</label>
+          <input type="date" className="modal-input" value={formDeadline} onChange={(e) => setFormDeadline(e.target.value)} />
         </div>
 
         <div className="modal-actions">
-            <button onClick={() => setTaskModalOpen(false)}>Отмена</button>
-            <button onClick={handleSaveTask} disabled={!formTitle} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>Сохранить</button>
+          <button onClick={() => setTaskModalOpen(false)}>Отмена</button>
+          <button onClick={handleSaveTask} disabled={!formTitle} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>Сохранить</button>
         </div>
       </Modal>
 
       {/* --- Delete Column Modal --- */}
       <Modal open={deleteModalOpen} title="Удаление колонки" onClose={() => setDeleteModalOpen(false)}>
-          <div style={{ paddingBottom: 16 }}>
-              <p>Вы уверены, что хотите удалить эту колонку?</p>
-              <p style={{ color: '#ef4444', fontSize: 14 }}>Все задачи ({columnToDelete ? tasks.filter(t => t.status === columnToDelete).length : 0}) внутри этой колонки будут удалены.</p>
-          </div>
-          <div className="modal-actions">
-                <button onClick={() => setDeleteModalOpen(false)}>Отмена</button>
-                <button onClick={handleDeleteColumn} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>Удалить</button>
-          </div>
+        <div style={{ paddingBottom: 16 }}>
+          <p>Вы уверены, что хотите удалить эту колонку?</p>
+          <p style={{ color: '#ef4444', fontSize: 14 }}>Все задачи ({columnToDelete ? tasks.filter(t => t.status === columnToDelete).length : 0}) внутри этой колонки будут удалены.</p>
+        </div>
+        <div className="modal-actions">
+          <button onClick={() => setDeleteModalOpen(false)}>Отмена</button>
+          <button onClick={handleDeleteColumn} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>Удалить</button>
+        </div>
       </Modal>
     </div>
   );
