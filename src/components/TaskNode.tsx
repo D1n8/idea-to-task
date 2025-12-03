@@ -2,56 +2,35 @@ import React from "react";
 import type { NodeProps } from "reactflow";
 import type { ITaskData, Priority } from "../modules";
 
-// Добавляем isDone в тип пропсов
 type TaskNodeData = ITaskData & {
   width: number;
   height: number;
   onEdit: (task: ITaskData) => void;
-  isDone: boolean; // Рассчитывается в KanbanFlow
+  isDone: boolean;
 };
 
 const priorityColors: Record<Priority, string> = {
-  highest: "#ef4444",
-  high: "#f97316",
-  medium: "#eab308",
-  low: "#3b82f6",
-  lowest: "#22c55e",
+  highest: "#ef4444", high: "#f97316", medium: "#eab308", low: "#3b82f6", lowest: "#22c55e",
 };
 
 const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
-  // Используем переданный проп, а не проверяем строку
-  const isDone = data.isDone; 
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const isDone = data.isDone;
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const deadlineDate = data.deadline ? new Date(data.deadline) : null;
   const isOverdue = !isDone && deadlineDate && deadlineDate < today;
-
   const priorityColor = data.priority ? priorityColors[data.priority] : null;
 
   let borderColor = "1px solid #d1d5db";
-  if (isDone) borderColor = "2px solid #22c55e";
-  else if (isOverdue) borderColor = "2px solid #ef4444";
-
-  const formattedDate = deadlineDate 
-    ? deadlineDate.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) 
-    : null;
+  if (isDone) borderColor = "2px solid #22c55e"; else if (isOverdue) borderColor = "2px solid #ef4444";
+  const formattedDate = deadlineDate ? deadlineDate.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) : null;
 
   return (
     <div
-      className="task-node"
+      className="task-node-wrapper"
       style={{
-        width: data.width,
-        height: data.height,
-        background: "#ffffff",
-        borderRadius: 8,
-        padding: "12px",
-        border: borderColor,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        display: "flex", flexDirection: "column",
-        cursor: "grab", boxSizing: "border-box", position: "relative",
-        opacity: isDone ? 0.7 : 1,
-        transition: "border 0.2s, opacity 0.2s",
+        width: data.width, height: data.height, background: "#ffffff", borderRadius: 8, padding: "12px", border: borderColor, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column",
+        cursor: "grab", boxSizing: "border-box", position: "relative", opacity: isDone ? 0.7 : 1, transition: "border 0.2s, opacity 0.2s, box-shadow 0.2s, transform 0.1s",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
@@ -64,14 +43,19 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
         >
           {data.title}
         </div>
+        
+        {/* НОВАЯ КНОПКА "Изучить подробнее" */}
         <button
           className="nodrag"
           onClick={(e) => { e.stopPropagation(); data.onEdit(data); }}
-          style={{ position: "absolute", top: 8, right: 8, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: "#9ca3af", display: "flex", alignItems: "center" }}
+          title="Открыть подробности"
+          style={{ position: "absolute", top: 8, right: 8, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: "#6b7280", display: "flex", alignItems: "center" }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          {/* Иконка "Maximize" / "Open" */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 3h6v6"></path>
+            <path d="M10 14L21 3"></path>
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
           </svg>
         </button>
       </div>

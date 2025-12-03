@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import ReactFlow, {
   Background,
   type Node,
@@ -23,16 +23,23 @@ const TASK_WIDTH = COLUMN_WIDTH - NODE_PADDING * 2;
 const TASK_HEIGHT = 110;
 const TASK_GAP = 12;
 
+// --- СПИСОК ПОЛЬЗОВАТЕЛЕЙ (MOCK) ---
+const AVAILABLE_USERS = [
+  { id: 'u1', name: 'Иван Иванов' },
+  { id: 'u2', name: 'Мария Петрова' },
+  { id: 'u3', name: 'Алексей Сидоров' },
+  { id: 'u4', name: 'Елена Смирнова' },
+];
+
 const initialColumns: ColumnData[] = [
   { id: "todo", title: "To do", x: 50, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: false },
   { id: "inprogress", title: "In progress", x: 400, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: false },
-  // Помечаем колонку "Done" как завершающую
   { id: "done", title: "Done", x: 750, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: true },
 ];
 
 const sampleTasks: ITaskData[] = [
-  { id: "t1", title: "Критичный баг", description: "Починить логин", status: "todo", priority: "highest", deadline: "2023-10-01", username: "Ivan" },
-  { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "inprogress", priority: "low", username: "Maria" },
+  { id: "t1", title: "Критичный баг", description: "Починить логин на странице авторизации", status: "todo", priority: "highest", deadline: "2023-10-01", username: "Иван Иванов" },
+  { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "inprogress", priority: "low", username: "Мария Петрова" },
 ];
 
 const nodeTypes: NodeTypes = {
@@ -51,6 +58,67 @@ const getPriorityWeight = (p?: Priority): number => {
   }
 };
 
+// --- КОМПОНЕНТ ДЛЯ РЕДАКТИРОВАНИЯ ПО КЛИКУ ---
+interface EditableFieldProps {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  isTextarea?: boolean;
+  fontSize?: string;
+  fontWeight?: string | number;
+}
+
+const EditableField: React.FC<EditableFieldProps> = ({ value, onChange, placeholder, isTextarea, fontSize = '14px', fontWeight = 'normal' }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return isTextarea ? (
+      <textarea
+        ref={inputRef as any}
+        className="modal-textarea-edit"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        style={{ fontSize, fontWeight }}
+      />
+    ) : (
+      <input
+        ref={inputRef as any}
+        className="modal-input-edit"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        style={{ fontSize, fontWeight }}
+      />
+    );
+  }
+
+  return (
+    <div 
+      className="editable-container" 
+      onClick={() => setIsEditing(true)}
+      style={{ fontSize, fontWeight, minHeight: isTextarea ? '60px' : 'auto' }}
+    >
+      {value || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>{placeholder || "Нажмите, чтобы добавить..."}</span>}
+    </div>
+  );
+};
+
+
+// --- ГЛАВНЫЙ КОМПОНЕНТ ---
 const KanbanFlow: React.FC = () => {
   const [columns, setColumns] = useState<ColumnData[]>(initialColumns);
   const [tasks, setTasks] = useState<ITaskData[]>(sampleTasks);
@@ -69,7 +137,6 @@ const KanbanFlow: React.FC = () => {
   const [formDeadline, setFormDeadline] = useState("");
   const [formUser, setFormUser] = useState("");
 
-  // --- Helper (Fixed) ---
   const getUniqueTitle = useCallback((baseTitle: string, excludeId?: string) => {
     let newTitle = baseTitle;
     let counter = 1;
@@ -84,16 +151,8 @@ const KanbanFlow: React.FC = () => {
   const handleCreateColumn = useCallback(() => {
     const newId = nanoid();
     const title = getUniqueTitle("Новая колонка");
-    
     const newColumn: ColumnData = {
-      id: newId,
-      title: title,
-      x: columns.length > 0 ? columns[columns.length - 1].x + COLUMN_WIDTH + 50 : 50,
-      y: 50,
-      width: COLUMN_WIDTH,
-      height: 500,
-      isEditing: true,
-      isDoneColumn: false, // Новая колонка не завершающая
+      id: newId, title: title, x: columns.length > 0 ? columns[columns.length - 1].x + COLUMN_WIDTH + 50 : 50, y: 50, width: COLUMN_WIDTH, height: 500, isEditing: true, isDoneColumn: false,
     };
     setColumns((prev) => [...prev, newColumn]);
   }, [columns, getUniqueTitle]);
@@ -126,12 +185,8 @@ const KanbanFlow: React.FC = () => {
     setColumnToDelete(null);
   }, [columnToDelete]);
 
-  // Устанавливает колонку как завершающую
   const handleSetDoneColumn = useCallback((colId: string) => {
-    setColumns(prev => prev.map(col => ({
-        ...col,
-        isDoneColumn: col.id === colId // Только эта колонка true, остальные false
-    })));
+    setColumns(prev => prev.map(col => ({ ...col, isDoneColumn: col.id === colId })));
   }, []);
 
   // --- LOGIC: TASKS ---
@@ -172,13 +227,7 @@ const KanbanFlow: React.FC = () => {
         );
       }
       const newTask: ITaskData = {
-        id: nanoid(),
-        title: formTitle,
-        description: formDesc,
-        status: formStatus,
-        priority: priorityValue,
-        deadline: deadlineValue,
-        username: userValue,
+        id: nanoid(), title: formTitle, description: formDesc, status: formStatus, priority: priorityValue, deadline: deadlineValue, username: userValue,
       };
       return [...prev, newTask];
     });
@@ -197,9 +246,7 @@ const KanbanFlow: React.FC = () => {
     const tasksByStatus: Record<string, ITaskData[]> = {};
     columns.forEach(c => { tasksByStatus[c.id] = [] });
 
-    tasks.forEach((t) => {
-        if(tasksByStatus[t.status]) tasksByStatus[t.status].push(t);
-    });
+    tasks.forEach((t) => { if(tasksByStatus[t.status]) tasksByStatus[t.status].push(t); });
 
     Object.keys(tasksByStatus).forEach((key) => {
       tasksByStatus[key].sort((a, b) => {
@@ -209,72 +256,37 @@ const KanbanFlow: React.FC = () => {
       });
     });
 
-    // 1. Columns
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       const dynamicHeight = getColumnHeight(colTasks.length);
-
       nodesArr.push({
-        id: `col-${col.id}`,
-        type: "column",
-        position: { x: col.x, y: col.y },
-        data: { 
-            ...col, 
-            height: dynamicHeight, 
-            onAddTask: openAddModal,
-            onDelete: confirmDeleteColumn,
-            onRename: handleRenameColumn,
-            onAddColumn: handleCreateColumn,
-            onSetDone: handleSetDoneColumn // передаем колбек
-        },
-        draggable: true,
-        zIndex: 0,
-        width: col.width,
-        height: dynamicHeight,
+        id: `col-${col.id}`, type: "column", position: { x: col.x, y: col.y },
+        data: { ...col, height: dynamicHeight, onAddTask: openAddModal, onDelete: confirmDeleteColumn, onRename: handleRenameColumn, onAddColumn: handleCreateColumn, onSetDone: handleSetDoneColumn },
+        draggable: true, zIndex: 0, width: col.width, height: dynamicHeight,
       });
     });
 
-    // 2. Tasks
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
-      // Определяем, является ли эта колонка "Завершающей"
       const isColumnDone = col.isDoneColumn === true;
-
       colTasks.forEach((task, index) => {
         const x = col.x + NODE_PADDING;
         const y = col.y + COLUMN_HEADER_HEIGHT + NODE_PADDING + index * (TASK_HEIGHT + TASK_GAP);
-
         nodesArr.push({
-          id: task.id,
-          type: "task",
-          position: { x, y },
-          data: { 
-              ...task, 
-              width: TASK_WIDTH, 
-              height: TASK_HEIGHT, 
-              onEdit: openEditModal,
-              isDone: isColumnDone // Передаем статус завершенности от колонки
-          },
-          draggable: true,
-          zIndex: 10,
-          extent: 'parent', 
+          id: task.id, type: "task", position: { x, y },
+          data: { ...task, width: TASK_WIDTH, height: TASK_HEIGHT, onEdit: openEditModal, isDone: isColumnDone },
+          draggable: true, zIndex: 10, extent: 'parent', 
         });
       });
     });
-
     return nodesArr;
   }, [columns, tasks, openAddModal, openEditModal, getColumnHeight, confirmDeleteColumn, handleRenameColumn, handleCreateColumn, handleSetDoneColumn]);
 
-  // --- DRAG AND DROP ---
   const onNodeDragStop: NodeDragHandler = useCallback(
     (_, node) => {
       if (node.type === "column") {
         const colId = node.id.replace("col-", "");
-        setColumns((prev) =>
-          prev.map((c) =>
-            c.id === colId ? { ...c, x: node.position.x, y: node.position.y } : c
-          )
-        );
+        setColumns((prev) => prev.map((c) => c.id === colId ? { ...c, x: node.position.x, y: node.position.y } : c));
         return;
       }
       if (node.type === "task") {
@@ -283,19 +295,10 @@ const KanbanFlow: React.FC = () => {
         const targetColumn = columns.find((col) => {
             const tasksInCol = tasks.filter(t => t.status === col.id).length;
             const currentHeight = getColumnHeight(tasksInCol);
-            return (
-                centerX >= col.x && 
-                centerX <= col.x + col.width &&
-                centerY >= col.y && 
-                centerY <= col.y + currentHeight
-            );
+            return (centerX >= col.x && centerX <= col.x + col.width && centerY >= col.y && centerY <= col.y + currentHeight);
         });
         if (targetColumn) {
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === node.id ? { ...t, status: targetColumn.id } : t
-            )
-          );
+          setTasks((prev) => prev.map((t) => t.id === node.id ? { ...t, status: targetColumn.id } : t));
         }
       }
     },
@@ -315,21 +318,47 @@ const KanbanFlow: React.FC = () => {
         <Background gap={20} />
       </ReactFlow>
 
-      {/* --- Task Modal --- */}
-      <Modal open={taskModalOpen} title={editingTaskId ? "Редактировать задачу" : "Добавить задачу"} onClose={() => setTaskModalOpen(false)}>
-        <input className="modal-input" placeholder="Название" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} />
-        <textarea className="modal-textarea" placeholder="Описание" value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
-        <input className="modal-input" placeholder="Имя пользователя" value={formUser} onChange={(e) => setFormUser(e.target.value)} />
+      {/* --- Task Modal (ОБНОВЛЕННАЯ) --- */}
+      <Modal
+        open={taskModalOpen}
+        title={editingTaskId ? "Детали задачи" : "Новая задача"}
+        onClose={() => setTaskModalOpen(false)}
+      >
+        {/* Click-to-Edit Title */}
+        <div>
+            <label style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4, display: 'block' }}>Название</label>
+            <EditableField 
+                value={formTitle} 
+                onChange={setFormTitle} 
+                placeholder="Введите название задачи..." 
+                fontSize="24px" 
+                fontWeight="600"
+            />
+        </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: '#666' }}>Статус:</label>
+        {/* Click-to-Edit Description */}
+        <div>
+            <label style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4, display: 'block' }}>Описание</label>
+            <EditableField 
+                value={formDesc} 
+                onChange={setFormDesc} 
+                placeholder="Добавить более подробное описание..." 
+                isTextarea={true}
+            />
+        </div>
+
+        {/* Settings Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, background: '#f9fafb', padding: 16, borderRadius: 8 }}>
+            
+            <div>
+                <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Статус</label>
                 <select className="modal-input" value={formStatus} onChange={(e) => setFormStatus(e.target.value)}>
                     {columns.map(col => (<option key={col.id} value={col.id}>{col.title}</option>))}
                 </select>
             </div>
-            <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: '#666' }}>Приоритет:</label>
+
+            <div>
+                <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Приоритет</label>
                 <select className="modal-input" value={formPriority} onChange={(e) => setFormPriority(e.target.value as Priority | "none")}>
                     <option value="none">Нет приоритета</option>
                     <option value="highest">Highest (🔴)</option>
@@ -339,15 +368,29 @@ const KanbanFlow: React.FC = () => {
                     <option value="lowest">Lowest (🟢)</option>
                 </select>
             </div>
-        </div>
-        <div>
-             <label style={{ fontSize: 12, color: '#666' }}>Дедлайн:</label>
-             <input type="date" className="modal-input" value={formDeadline} onChange={(e) => setFormDeadline(e.target.value)} />
+
+            <div>
+                 <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Дедлайн</label>
+                 <input type="date" className="modal-input" value={formDeadline} onChange={(e) => setFormDeadline(e.target.value)} />
+            </div>
+
+            <div>
+                 <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Ответственный</label>
+                 {/* ВЫПАДАЮЩИЙ СПИСОК ПОЛЬЗОВАТЕЛЕЙ */}
+                 <select className="modal-input" value={formUser} onChange={(e) => setFormUser(e.target.value)}>
+                     <option value="">Не назначен</option>
+                     {AVAILABLE_USERS.map(user => (
+                         <option key={user.id} value={user.name}>{user.name}</option>
+                     ))}
+                 </select>
+            </div>
         </div>
 
         <div className="modal-actions">
             <button onClick={() => setTaskModalOpen(false)}>Отмена</button>
-            <button onClick={handleSaveTask} disabled={!formTitle} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>Сохранить</button>
+            <button onClick={handleSaveTask} disabled={!formTitle} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 24px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+                {editingTaskId ? "Сохранить изменения" : "Создать задачу"}
+            </button>
         </div>
       </Modal>
 
