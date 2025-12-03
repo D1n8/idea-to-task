@@ -8,6 +8,7 @@ export interface ITaskData {
   priority?: Priority;
   deadline?: string;
   username?: string;
+  parentId?: string;
 }
 
 export interface ColumnData {
@@ -19,4 +20,11 @@ export interface ColumnData {
   height: number;
   isEditing?: boolean;
   isDoneColumn?: boolean;
+}
+
+export interface SubtaskListProps {
+    parentId: string;
+    tasks: ITaskData[];
+    openEditModal: (task: ITaskData) => void;
+    openAddSubtaskModal: (parentId: string) => void;
 }
