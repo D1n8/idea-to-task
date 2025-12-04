@@ -7,33 +7,28 @@ import {
   getColumnHeight, getPriorityWeight, getUniqueTitle 
 } from "../utils/kanbanUtils";
 
-// Исходные данные (можно тоже вынести в константы)
-const initialColumns: ColumnData[] = [
-  { id: "todo", title: "To do", x: 50, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: false },
-  { id: "inprogress", title: "In progress", x: 400, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: false },
-  { id: "done", title: "Done", x: 750, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: true },
-];
-
-const sampleTasks: ITaskData[] = [
-  { id: "t1", title: "Критичный баг", description: "Починить логин", status: "todo", priority: "highest", deadline: "2023-10-01", username: "Иван Иванов" },
-  { id: "t2", title: "Обычная задача", description: "Цвет кнопки", status: "inprogress", priority: "low", username: "Мария Петрова" },
-  { id: "t3", title: "Unit тесты", description: "Для авторизации", status: "todo", priority: "medium", parentId: "t1" },
-];
+// ИМПОРТ МОКОВЫХ ДАННЫХ
+import { initialColumns, sampleTasks } from "../data/mockData";
 
 export const useKanbanBoard = () => {
   const [columns, setColumns] = useState<ColumnData[]>(initialColumns);
   const [tasks, setTasks] = useState<ITaskData[]>(sampleTasks);
 
-  // Модальные состояния
+  // --- MODALS STATE ---
   const [taskModal, setTaskModal] = useState<{ isOpen: boolean; editingTask: ITaskData | null; status: string; parentId?: string }>({
     isOpen: false, editingTask: null, status: "todo", parentId: undefined
   });
 
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; colId: string | null }>({
+  const [deleteColumnModal, setDeleteColumnModal] = useState<{ isOpen: boolean; colId: string | null }>({
     isOpen: false, colId: null
   });
 
-  // --- CRUD COLUMNS ---
+  // НОВОЕ: Стейт для модалки удаления задачи
+  const [deleteTaskModal, setDeleteTaskModal] = useState<{ isOpen: boolean; taskId: string | null }>({
+    isOpen: false, taskId: null
+  });
+
+  // --- CRUD COLUMNS (без изменений) ---
   const handleCreateColumn = useCallback(() => {
     const newId = nanoid();
     const title = getUniqueTitle("Новая колонка", columns);
@@ -48,21 +43,19 @@ export const useKanbanBoard = () => {
     setColumns((prev) => {
       const isDuplicate = prev.some(c => c.title === newTitle && c.id !== colId);
       let finalTitle = newTitle;
-      if (isDuplicate) {
-         finalTitle = getUniqueTitle(newTitle, prev, colId);
-      }
+      if (isDuplicate) finalTitle = getUniqueTitle(newTitle, prev, colId);
       return prev.map(c => c.id === colId ? { ...c, title: finalTitle, isEditing: false } : c);
     });
   }, []);
 
-  const confirmDeleteColumn = useCallback((colId: string) => setDeleteModal({ isOpen: true, colId }), []);
+  const confirmDeleteColumn = useCallback((colId: string) => setDeleteColumnModal({ isOpen: true, colId }), []);
   
   const handleDeleteColumn = useCallback(() => {
-    if (!deleteModal.colId) return;
-    setColumns((prev) => prev.filter(c => c.id !== deleteModal.colId));
-    setTasks((prev) => prev.filter(t => t.status !== deleteModal.colId));
-    setDeleteModal({ isOpen: false, colId: null });
-  }, [deleteModal.colId]);
+    if (!deleteColumnModal.colId) return;
+    setColumns((prev) => prev.filter(c => c.id !== deleteColumnModal.colId));
+    setTasks((prev) => prev.filter(t => t.status !== deleteColumnModal.colId));
+    setDeleteColumnModal({ isOpen: false, colId: null });
+  }, [deleteColumnModal.colId]);
 
   const handleSetDoneColumn = useCallback((colId: string) => {
     setColumns(prev => prev.map(col => ({ ...col, isDoneColumn: col.id === colId })));
@@ -88,47 +81,63 @@ export const useKanbanBoard = () => {
       }
       const newTask: ITaskData = {
         id: nanoid(),
-        title: taskData.title!,
-        description: taskData.description,
-        status: taskData.status!,
-        priority: taskData.priority,
-        deadline: taskData.deadline,
-        username: taskData.username,
-        parentId: taskData.parentId,
+        title: taskData.title!, description: taskData.description, status: taskData.status!,
+        priority: taskData.priority, deadline: taskData.deadline, username: taskData.username, parentId: taskData.parentId,
       };
       return [...prev, newTask];
     });
     setTaskModal(prev => ({ ...prev, isOpen: false }));
   }, [taskModal.editingTask]);
 
-  // --- NODES GENERATION ---
+  // --- DELETE TASK LOGIC ---
+  const openDeleteTaskModal = useCallback((taskId: string) => {
+    setDeleteTaskModal({ isOpen: true, taskId });
+  }, []);
+
+  const handleDeleteTask = useCallback((deleteSubtasks: boolean) => {
+    const taskId = deleteTaskModal.taskId;
+    if (!taskId) return;
+
+    setTasks(prev => {
+        // 1. Удаляем саму задачу
+        let newTasks = prev.filter(t => t.id !== taskId);
+
+        // 2. Логика чекбокса
+        if (deleteSubtasks) {
+            // Удаляем всех детей
+            newTasks = newTasks.filter(t => t.parentId !== taskId);
+        } else {
+            // Оставляем детей, но убираем parentId
+            newTasks = newTasks.map(t => t.parentId === taskId ? { ...t, parentId: undefined } : t);
+        }
+        return newTasks;
+    });
+
+    setDeleteTaskModal({ isOpen: false, taskId: null });
+    setTaskModal(prev => ({ ...prev, isOpen: false })); // Закрываем также модалку редактирования
+  }, [deleteTaskModal.taskId]);
+
+  // --- NODES GENERATION (без изменений) ---
   const nodes: Node[] = useMemo(() => {
     const nodesArr: Node[] = [];
     const tasksByStatus: Record<string, ITaskData[]> = {};
     columns.forEach(c => { tasksByStatus[c.id] = [] });
 
     tasks.forEach((t) => { if(tasksByStatus[t.status]) tasksByStatus[t.status].push(t); });
-
     Object.keys(tasksByStatus).forEach((key) => {
       tasksByStatus[key].sort((a, b) => getPriorityWeight(b.priority) - getPriorityWeight(a.priority));
     });
 
-    // Columns
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       const dynamicHeight = getColumnHeight(colTasks.length);
       nodesArr.push({
         id: `col-${col.id}`, type: "column", position: { x: col.x, y: col.y },
-        data: { 
-          ...col, height: dynamicHeight, 
-          onAddTask: openNewTaskModal, onDelete: confirmDeleteColumn, 
-          onRename: handleRenameColumn, onAddColumn: handleCreateColumn, onSetDone: handleSetDoneColumn 
-        },
+        data: { ...col, height: dynamicHeight, onAddTask: openNewTaskModal, onDelete: confirmDeleteColumn, onRename: handleRenameColumn, onAddColumn: handleCreateColumn, onSetDone: handleSetDoneColumn },
         draggable: true, zIndex: 0, width: col.width, height: dynamicHeight,
       });
     });
 
-    // Tasks
     columns.forEach((col) => {
       const colTasks = tasksByStatus[col.id] || [];
       const isColumnDone = col.isDoneColumn === true;
@@ -145,7 +154,6 @@ export const useKanbanBoard = () => {
     return nodesArr;
   }, [columns, tasks, openNewTaskModal, openEditTaskModal, confirmDeleteColumn, handleRenameColumn, handleCreateColumn, handleSetDoneColumn]);
 
-  // --- DRAG AND DROP ---
   const onNodeDragStop: NodeDragHandler = useCallback((_, node) => {
     if (node.type === "column") {
       const colId = node.id.replace("col-", "");
@@ -167,19 +175,14 @@ export const useKanbanBoard = () => {
   }, [columns, tasks]);
 
   return {
-    nodes,
-    onNodeDragStop,
-    columns,
-    tasks,
-    // Модалки
-    taskModal,
-    setTaskModal,
-    deleteModal,
-    setDeleteModal,
-    // Обработчики
-    handleSaveTask,
-    handleDeleteColumn,
-    openSubtaskModal,
-    openEditTaskModal
+    nodes, onNodeDragStop, columns, tasks,
+    taskModal, setTaskModal,
+    deleteColumnModal, setDeleteColumnModal,
+    // Экспортируем состояния и методы для удаления задачи
+    deleteTaskModal, setDeleteTaskModal,
+    handleDeleteTask,
+    openDeleteTaskModal,
+    // 
+    handleSaveTask, handleDeleteColumn, openSubtaskModal, openEditTaskModal
   };
 };

@@ -6,6 +6,7 @@ import ColumnNode from "../components/kanban/ColumnNode";
 import TaskNode from "../components/kanban/TaskNode";
 import TaskModal from "../components/kanban/TaskModal";
 import DeleteColumnModal from "../components/kanban/DeleteColumnModal";
+import DeleteTaskModal from "../components/kanban/DeleteTaskModal"; 
 import { useKanbanBoard } from "../hooks/useKanbanBoard";
 
 const nodeTypes: NodeTypes = {
@@ -21,17 +22,26 @@ const KanbanFlow: React.FC = () => {
     tasks,
     taskModal,
     setTaskModal,
-    deleteModal,
-    setDeleteModal,
+    deleteColumnModal,
+    setDeleteColumnModal,
+    deleteTaskModal, 
+    setDeleteTaskModal,
+    handleDeleteTask,
+    openDeleteTaskModal,
     handleSaveTask,
     handleDeleteColumn,
     openSubtaskModal,
     openEditTaskModal
   } = useKanbanBoard();
 
-  // Количество задач для удаления
-  const tasksToDeleteCount = deleteModal.colId 
-    ? tasks.filter(t => t.status === deleteModal.colId).length 
+  // Количество задач для удаления колонки
+  const tasksInColumnToDelete = deleteColumnModal.colId 
+    ? tasks.filter(t => t.status === deleteColumnModal.colId).length 
+    : 0;
+
+  // Количество подзадач для удаления задачи
+  const subtasksCount = deleteTaskModal.taskId
+    ? tasks.filter(t => t.parentId === deleteTaskModal.taskId).length
     : 0;
 
   return (
@@ -47,7 +57,7 @@ const KanbanFlow: React.FC = () => {
         <Background gap={20} />
       </ReactFlow>
 
-      {/* Модалка задачи (Создание / Редактирование) */}
+      {/* Модалка задачи */}
       <TaskModal 
         isOpen={taskModal.isOpen}
         onClose={() => setTaskModal(prev => ({ ...prev, isOpen: false }))}
@@ -63,14 +73,23 @@ const KanbanFlow: React.FC = () => {
         }}
         onAddSubtask={openSubtaskModal}
         onEditSubtask={openEditTaskModal}
+        onDelete={openDeleteTaskModal} // Передаем функцию удаления
       />
 
       {/* Модалка удаления колонки */}
       <DeleteColumnModal 
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, colId: null })}
+        isOpen={deleteColumnModal.isOpen}
+        onClose={() => setDeleteColumnModal({ isOpen: false, colId: null })}
         onConfirm={handleDeleteColumn}
-        taskCount={tasksToDeleteCount}
+        taskCount={tasksInColumnToDelete}
+      />
+
+      {/* Модалка удаления задачи */}
+      <DeleteTaskModal
+        isOpen={deleteTaskModal.isOpen}
+        onClose={() => setDeleteTaskModal({ isOpen: false, taskId: null })}
+        onConfirm={handleDeleteTask}
+        subtaskCount={subtasksCount}
       />
     </div>
   );

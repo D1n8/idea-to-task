@@ -3,38 +3,29 @@ import Modal from "../ui/Modal";
 import { EditableField } from "../ui/EditableField";
 import SubtaskList from "./SubtaskList";
 import type { ITaskData, ColumnData, Priority } from "../../types/modules";
-
-const AVAILABLE_USERS = [
-  { id: 'u1', name: 'Иван Иванов' },
-  { id: 'u2', name: 'Мария Петрова' },
-  { id: 'u3', name: 'Алексей Сидоров' },
-  { id: 'u4', name: 'Елена Смирнова' },
-];
+// Импорт моковых пользователей теперь из data
+import { AVAILABLE_USERS } from "../../data/mockData";
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Данные для редактирования или создания
   editingTask: ITaskData | null;
   initialStatus: string;
   initialParentId?: string;
-  
-  // Данные окружения
   columns: ColumnData[];
   allTasks: ITaskData[];
-  
-  // Действия
   onSave: (task: Partial<ITaskData>) => void;
   onOpenParent: (parentId: string) => void;
   onAddSubtask: (parentId: string) => void;
   onEditSubtask: (task: ITaskData) => void;
+  // Новый проп для удаления
+  onDelete: (taskId: string) => void;
 }
 
 const TaskModal: React.FC<TaskModalProps> = ({
   isOpen, onClose, editingTask, initialStatus, initialParentId,
-  columns, allTasks, onSave, onOpenParent, onAddSubtask, onEditSubtask
+  columns, allTasks, onSave, onOpenParent, onAddSubtask, onEditSubtask, onDelete
 }) => {
-  // Локальный стейт формы
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [status, setStatus] = useState("todo");
@@ -43,7 +34,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const [user, setUser] = useState("");
   const [parentId, setParentId] = useState<string | undefined>(undefined);
 
-  // Синхронизация при открытии
   useEffect(() => {
     if (isOpen) {
       if (editingTask) {
@@ -55,7 +45,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
         setUser(editingTask.username || "");
         setParentId(editingTask.parentId);
       } else {
-        // Режим создания
         setTitle("");
         setDesc("");
         setStatus(initialStatus);
@@ -69,13 +58,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   const handleSave = () => {
     const taskData: Partial<ITaskData> = {
-      title,
-      description: desc,
-      status,
-      priority: priority === "none" ? undefined : priority,
-      deadline: deadline || undefined,
-      username: user || undefined,
-      // Предотвращаем цикличность
+      title, description: desc, status, priority: priority === "none" ? undefined : priority,
+      deadline: deadline || undefined, username: user || undefined,
       parentId: (editingTask && parentId === editingTask.id) ? undefined : parentId
     };
     onSave(taskData);
@@ -90,7 +74,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
       onClose={onClose}
     >
       <div className="modal-body">
-        {/* Родительский блок */}
+        {/* Родитель */}
         {parentId && (
           <div style={{ padding: '10px 15px', border: '1px solid #3b82f6', borderRadius: 8, background: '#eff6ff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span style={{ fontWeight: 500, color: '#1d4ed8', fontSize: 14 }}>
@@ -105,75 +89,43 @@ const TaskModal: React.FC<TaskModalProps> = ({
           </div>
         )}
 
-        <div>
-          <label style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4, display: 'block' }}>Название</label>
-          <EditableField value={title} onChange={setTitle} placeholder="Введите название..." fontSize="24px" fontWeight="600" />
-        </div>
+        {/* Поля ввода (Title, Desc) - сокращено для краткости, они такие же */}
+        <div><label style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4, display: 'block' }}>Название</label><EditableField value={title} onChange={setTitle} placeholder="Введите название..." fontSize="24px" fontWeight="600" /></div>
+        <div><label style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4, display: 'block' }}>Описание</label><EditableField value={desc} onChange={setDesc} placeholder="Добавить описание..." isTextarea={true} /></div>
 
-        <div>
-          <label style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4, display: 'block' }}>Описание</label>
-          <EditableField value={desc} onChange={setDesc} placeholder="Добавить описание..." isTextarea={true} />
-        </div>
-
+        {/* Сетка настроек */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, background: '#f9fafb', padding: 16, borderRadius: 8 }}>
-          <div>
-            <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Статус</label>
-            <select className="modal-input" value={status} onChange={(e) => setStatus(e.target.value)}>
-              {columns.map(col => (<option key={col.id} value={col.id}>{col.title}</option>))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Приоритет</label>
-            <select className="modal-input" value={priority} onChange={(e) => setPriority(e.target.value as Priority | "none")}>
-              <option value="none">Нет приоритета</option>
-              <option value="highest">Highest (🔴)</option>
-              <option value="high">High (🟠)</option>
-              <option value="medium">Medium (🟡)</option>
-              <option value="low">Low (🔵)</option>
-              <option value="lowest">Lowest (🟢)</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Дедлайн</label>
-            <input type="date" className="modal-input" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Ответственный</label>
-            <select className="modal-input" value={user} onChange={(e) => setUser(e.target.value)}>
-              <option value="">Не назначен</option>
-              {AVAILABLE_USERS.map(u => (<option key={u.id} value={u.name}>{u.name}</option>))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Родительская задача</label>
-            <select className="modal-input" value={parentId || ""} onChange={(e) => setParentId(e.target.value || undefined)}>
-              <option value="">Нет родителя</option>
-              {allTasks
-                .filter(t => t.id !== editingTask?.id)
-                .map(t => (<option key={t.id} value={t.id}>{t.title}</option>))}
-            </select>
-          </div>
+          <div><label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Статус</label><select className="modal-input" value={status} onChange={(e) => setStatus(e.target.value)}>{columns.map(col => (<option key={col.id} value={col.id}>{col.title}</option>))}</select></div>
+          <div><label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Приоритет</label><select className="modal-input" value={priority} onChange={(e) => setPriority(e.target.value as Priority | "none")}><option value="none">Нет приоритета</option><option value="highest">Highest (🔴)</option><option value="high">High (🟠)</option><option value="medium">Medium (🟡)</option><option value="low">Low (🔵)</option><option value="lowest">Lowest (🟢)</option></select></div>
+          <div><label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Дедлайн</label><input type="date" className="modal-input" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
+          <div><label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Ответственный</label><select className="modal-input" value={user} onChange={(e) => setUser(e.target.value)}><option value="">Не назначен</option>{AVAILABLE_USERS.map(u => (<option key={u.id} value={u.name}>{u.name}</option>))}</select></div>
+          <div><label style={{ fontSize: 12, color: '#666', marginBottom: 4, display: 'block' }}>Родительская задача</label><select className="modal-input" value={parentId || ""} onChange={(e) => setParentId(e.target.value || undefined)}><option value="">Нет родителя</option>{allTasks.filter(t => t.id !== editingTask?.id).map(t => (<option key={t.id} value={t.id}>{t.title}</option>))}</select></div>
         </div>
 
         {editingTask && (
-          <SubtaskList 
-            parentId={editingTask.id} 
-            tasks={allTasks} 
-            openEditModal={onEditSubtask} 
-            openAddSubtaskModal={onAddSubtask} 
-          />
+          <SubtaskList parentId={editingTask.id} tasks={allTasks} openEditModal={onEditSubtask} openAddSubtaskModal={onAddSubtask} />
         )}
       </div>
 
-      <div className="modal-actions">
-        <button onClick={onClose}>Отмена</button>
-        <button onClick={handleSave} disabled={!title} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 24px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
-          {editingTask ? "Сохранить изменения" : "Создать задачу"}
-        </button>
+      <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+        {/* Кнопка УДАЛИТЬ слева (только при редактировании) */}
+        {editingTask ? (
+            <button 
+                onClick={() => onDelete(editingTask.id)} 
+                style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '10px 16px', borderRadius: 6, cursor: 'pointer' }}
+            >
+                Удалить
+            </button>
+        ) : (
+            <div /> /* Пустой див для сохранения flex layout */
+        )}
+        
+        <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={onClose}>Отмена</button>
+            <button onClick={handleSave} disabled={!title} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 24px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+            {editingTask ? "Сохранить изменения" : "Создать задачу"}
+            </button>
+        </div>
       </div>
     </Modal>
   );
