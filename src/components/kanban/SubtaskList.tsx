@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ITaskData, Priority } from '../modules';
+import type { ITaskData, Priority } from '../../types/modules';
 
 interface SubtaskListProps {
     parentId: string;

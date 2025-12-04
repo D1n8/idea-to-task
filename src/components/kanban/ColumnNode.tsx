@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import type { NodeProps } from "reactflow";
-import type { ColumnData } from "../modules";
+import type { ColumnData } from "../../types/modules";
 
 type ColumnNodeData = ColumnData & { 
   onAddTask: (colId: string) => void;

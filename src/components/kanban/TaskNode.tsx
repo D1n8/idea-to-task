@@ -1,6 +1,6 @@
 import React from "react";
 import type { NodeProps } from "reactflow";
-import type { ITaskData, Priority } from "../modules";
+import type { ITaskData, Priority } from "../../types/modules";
 
 type TaskNodeData = ITaskData & {
   width: number;

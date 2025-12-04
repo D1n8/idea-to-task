@@ -21,10 +21,3 @@ export interface ColumnData {
   isEditing?: boolean;
   isDoneColumn?: boolean;
 }
-
-export interface SubtaskListProps {
-    parentId: string;
-    tasks: ITaskData[];
-    openEditModal: (task: ITaskData) => void;
-    openAddSubtaskModal: (parentId: string) => void;
-}
