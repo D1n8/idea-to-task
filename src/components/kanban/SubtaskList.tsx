@@ -42,17 +42,13 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ parentId, tasks, openEditModa
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {subtasks.map(task => (
                         <div key={task.id} style={{ display: 'flex', alignItems: 'center', padding: 8, border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' }}>
-                            {/* Priority Indicator */}
                             <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: getPriorityColor(task.priority), marginRight: 10 }} title={`Приоритет: ${task.priority || 'Нет'}`}/>
-                            
-                            {/* Title and Status */}
                             <div style={{ flexGrow: 1, fontSize: 14, fontWeight: 500, cursor: 'pointer' }} onClick={() => openEditModal(task)}>
                                 {task.title}
                                 <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 10, fontWeight: 400 }}>
                                     (В статусе: {task.status})
                                 </span>
                             </div>
-
                             <button 
                                 onClick={() => openEditModal(task)} 
                                 style={{ border: 'none', background: 'transparent', color: '#6b7280', padding: '5px 10px', cursor: 'pointer' }}

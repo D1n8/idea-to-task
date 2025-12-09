@@ -8,6 +8,7 @@ import TaskModal from "../components/kanban/TaskModal";
 import DeleteColumnModal from "../components/kanban/DeleteColumnModal";
 import DeleteTaskModal from "../components/kanban/DeleteTaskModal"; 
 import { useKanbanBoard } from "../hooks/useKanbanBoard";
+import { AVAILABLE_USERS } from "../data/mockData";
 
 const nodeTypes: NodeTypes = {
   column: ColumnNode,
@@ -57,7 +58,6 @@ const KanbanFlow: React.FC = () => {
         <Background gap={20} />
       </ReactFlow>
 
-      {/* Модалка задачи */}
       <TaskModal 
         isOpen={taskModal.isOpen}
         onClose={() => setTaskModal(prev => ({ ...prev, isOpen: false }))}
@@ -66,6 +66,7 @@ const KanbanFlow: React.FC = () => {
         initialParentId={taskModal.parentId}
         columns={columns}
         allTasks={tasks}
+        users={AVAILABLE_USERS}
         onSave={handleSaveTask}
         onOpenParent={(parentId) => {
             const parent = tasks.find(t => t.id === parentId);
@@ -73,7 +74,7 @@ const KanbanFlow: React.FC = () => {
         }}
         onAddSubtask={openSubtaskModal}
         onEditSubtask={openEditTaskModal}
-        onDelete={openDeleteTaskModal} // Передаем функцию удаления
+        onDelete={openDeleteTaskModal} 
       />
 
       {/* Модалка удаления колонки */}

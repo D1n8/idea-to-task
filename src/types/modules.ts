@@ -21,3 +21,21 @@ export interface ColumnData {
   isEditing?: boolean;
   isDoneColumn?: boolean;
 }
+
+export interface KanbanBoardProps {
+  tasks: ITaskData[];
+  columns: ColumnData[];
+  users: { id: string; name: string }[];
+  
+  onTaskCreate: (task: Partial<ITaskData>) => void;
+  onTaskUpdate: (task: ITaskData) => void;
+  onTaskDelete: (taskId: string, deleteChildren: boolean) => void;
+  onTaskMove: (taskId: string, newStatus: string) => void;
+
+  onColumnCreate: () => void;
+  onColumnRename: (colId: string, newTitle: string) => void;
+  onColumnDelete: (colId: string) => void;
+  onColumnMove: (colId: string, newX: number, newY: number) => void;
+  onSetDoneColumn: (colId: string) => void;
+  onColumnUpdate: (column: ColumnData) => void; 
+}
