@@ -1,29 +1,36 @@
 import React from "react";
-import Modal from "../ui/Modal";
 
-interface DeleteColumnModalProps {
+interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   taskCount: number;
 }
 
-const DeleteColumnModal: React.FC<DeleteColumnModalProps> = ({ isOpen, onClose, onConfirm, taskCount }) => {
+const DeleteColumnModal: React.FC<Props> = ({ isOpen, onClose, onConfirm, taskCount }) => {
+  if (!isOpen) return null;
+
   return (
-    <Modal open={isOpen} title="Удаление колонки" onClose={onClose}>
-      <div style={{ paddingBottom: 16 }}>
-        <p>Вы уверены, что хотите удалить эту колонку?</p>
-        <p style={{ color: '#ef4444', fontSize: 14 }}>
-          Все задачи ({taskCount}) внутри этой колонки будут удалены.
-        </p>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+      <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+        <h3 className="text-lg font-bold mb-4 text-red-600">Удаление колонки</h3>
+        {taskCount > 0 ? (
+          <p className="mb-6 text-gray-700">
+            В этой колонке есть <b>{taskCount}</b> задач. <br/>
+            Сначала переместите или удалите их.
+          </p>
+        ) : (
+          <p className="mb-6 text-gray-700">Вы уверены, что хотите удалить эту колонку?</p>
+        )}
+        
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Отмена</button>
+          {taskCount === 0 && (
+             <button onClick={onConfirm} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Удалить</button>
+          )}
+        </div>
       </div>
-      <div className="modal-actions">
-        <button onClick={onClose}>Отмена</button>
-        <button onClick={onConfirm} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}>
-          Удалить
-        </button>
-      </div>
-    </Modal>
+    </div>
   );
 };
 

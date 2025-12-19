@@ -2,34 +2,37 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import tailwindcss from '@tailwindcss/vite'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(),
+  tailwindcss(),
+  ],
   build: {
     sourcemap: true,
-    
+
     lib: {
-      entry: path.resolve(__dirname, 'src/index.ts'), 
+      entry: path.resolve(__dirname, 'src/index.ts'),
       name: 'IdeaToTaskModule',
       fileName: (format) => `idea-to-task.${format}.js`,
     },
-    
+
     rollupOptions: {
       external: [
-        'react', 
-        'react-dom', 
+        'react',
+        'react-dom',
         '@xyflow/react',
-        're-resizable', 
+        're-resizable',
         'nanoid'
       ],
       output: {
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
-          '@xyflow/react': 'ReactFlow', 
+          '@xyflow/react': 'ReactFlow',
           're-resizable': 'Resizable',
           nanoid: 'nanoid',
         },

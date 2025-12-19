@@ -1,61 +1,44 @@
-import React, { useState, useEffect } from "react";
-import Modal from "../ui/Modal";
+import React, { useState } from "react";
 
-interface DeleteTaskModalProps {
+interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (deleteSubtasks: boolean) => void;
-  subtaskCount: number; // Количество подзадач, чтобы знать, показывать ли чекбокс
+  subtaskCount: number;
 }
 
-const DeleteTaskModal: React.FC<DeleteTaskModalProps> = ({ isOpen, onClose, onConfirm, subtaskCount }) => {
+const DeleteTaskModal: React.FC<Props> = ({ isOpen, onClose, onConfirm, subtaskCount }) => {
+  if (!isOpen) return null;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [deleteSubtasks, setDeleteSubtasks] = useState(false);
 
-  // Сбрасываем чекбокс при открытии
-  useEffect(() => {
-    if (isOpen) setDeleteSubtasks(false);
-  }, [isOpen]);
-
   return (
-    <Modal open={isOpen} title="Удаление задачи" onClose={onClose}>
-      <div style={{ paddingBottom: 16 }}>
-        <p>Вы уверены, что хотите удалить эту задачу?</p>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+      <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+        <h3 className="text-lg font-bold mb-4 text-red-600">Удаление задачи</h3>
+        <p className="mb-4 text-gray-700">Вы уверены, что хотите удалить задачу?</p>
         
-        {subtaskCount > 0 ? (
-          <div style={{ marginTop: 16, background: '#fff1f2', padding: 12, borderRadius: 6, border: '1px solid #fecdd3' }}>
-            <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#be123c' }}>
-              У этой задачи есть <strong>{subtaskCount} подзадач(и)</strong>.
-            </p>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input 
-                type="checkbox" 
-                checked={deleteSubtasks} 
-                onChange={(e) => setDeleteSubtasks(e.target.checked)}
-                style={{ width: 16, height: 16, cursor: 'pointer' }}
-              />
-              Удалить также все подзадачи
+        {subtaskCount > 0 && (
+          <div className="mb-6 p-3 bg-red-50 rounded border border-red-100">
+            <p className="text-sm text-red-700 font-medium mb-2">У этой задачи есть {subtaskCount} подзадач.</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                    type="checkbox" 
+                    checked={deleteSubtasks} 
+                    onChange={e => setDeleteSubtasks(e.target.checked)}
+                    className="w-4 h-4 text-red-600 rounded"
+                />
+                <span className="text-sm text-gray-700">Удалить также и подзадачи?</span>
             </label>
-            {!deleteSubtasks && (
-               <p style={{ fontSize: 12, color: '#666', marginTop: 4, marginLeft: 24 }}>
-                 * Если не отметить, у подзадач пропадет родитель.
-               </p>
-            )}
           </div>
-        ) : (
-          <p style={{ fontSize: 14, color: '#666' }}>Это действие необратимо.</p>
         )}
+        
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Отмена</button>
+          <button onClick={() => onConfirm(deleteSubtasks)} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Удалить</button>
+        </div>
       </div>
-
-      <div className="modal-actions">
-        <button onClick={onClose}>Отмена</button>
-        <button 
-          onClick={() => onConfirm(deleteSubtasks)} 
-          style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer' }}
-        >
-          Удалить
-        </button>
-      </div>
-    </Modal>
+    </div>
   );
 };
 

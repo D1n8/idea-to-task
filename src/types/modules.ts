@@ -1,14 +1,14 @@
-export type Priority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
-
 export interface ITaskData {
   id: string;
   title: string;
   description?: string;
-  status: string;
-  priority?: Priority;
+  status: string; // id колонки
+  priority?: 'low' | 'medium' | 'high';
   deadline?: string;
-  username?: string;
-  parentId?: string;
+  username?: string; // Имя пользователя
+  parentId?: string; // Для подзадач
+  width?: number; // Для совместимости с node data
+  height?: number; // Для совместимости с node data
 }
 
 export interface ColumnData {
@@ -18,24 +18,6 @@ export interface ColumnData {
   y: number;
   width: number;
   height: number;
-  isEditing?: boolean;
+  isEditing: boolean;
   isDoneColumn?: boolean;
-}
-
-export interface KanbanBoardProps {
-  tasks: ITaskData[];
-  columns: ColumnData[];
-  users: { id: string; name: string }[];
-  
-  onTaskCreate: (task: Partial<ITaskData>) => void;
-  onTaskUpdate: (task: ITaskData) => void;
-  onTaskDelete: (taskId: string, deleteChildren: boolean) => void;
-  onTaskMove: (taskId: string, newStatus: string) => void;
-
-  onColumnCreate: () => void;
-  onColumnRename: (colId: string, newTitle: string) => void;
-  onColumnDelete: (colId: string) => void;
-  onColumnMove: (colId: string, newX: number, newY: number) => void;
-  onSetDoneColumn: (colId: string) => void;
-  onColumnUpdate: (column: ColumnData) => void; 
 }

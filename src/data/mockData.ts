@@ -1,21 +1,15 @@
-import type { ColumnData, ITaskData } from "../types/modules";
-import { COLUMN_WIDTH } from "../utils/kanbanUtils";
+import type { ITaskData, ColumnData } from "../types/modules";
 
-export const AVAILABLE_USERS = [
-  { id: 'u1', name: 'Иван Иванов' },
-  { id: 'u2', name: 'Мария Петрова' },
-  { id: 'u3', name: 'Алексей Сидоров' },
-  { id: 'u4', name: 'Елена Смирнова' },
-];
+export const AVAILABLE_USERS = ["Alex", "Maria", "John", "Kate"];
 
 export const initialColumns: ColumnData[] = [
-  { id: "todo", title: "To do", x: 50, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: false },
-  { id: "inprogress", title: "In progress", x: 400, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: false },
-  { id: "done", title: "Done", x: 750, y: 50, width: COLUMN_WIDTH, height: 600, isDoneColumn: true },
+  { id: "todo", title: "К выполнению", x: 0, y: 0, width: 300, height: 500, isEditing: false },
+  { id: "in-progress", title: "В работе", x: 320, y: 0, width: 300, height: 500, isEditing: false },
+  { id: "done", title: "Готово", x: 640, y: 0, width: 300, height: 500, isEditing: false, isDoneColumn: true },
 ];
 
 export const sampleTasks: ITaskData[] = [
-  { id: "t1", title: "Критичный баг", description: "Починить логин на странице авторизации", status: "todo", priority: "highest", deadline: "2023-10-01", username: "Иван Иванов" },
-  { id: "t2", title: "Обычная задача", description: "Поменять цвет кнопки", status: "inprogress", priority: "low", username: "Мария Петрова" },
-  { id: "t3", title: "Unit тесты", description: "Для авторизации", status: "todo", priority: "medium", parentId: "t1" },
+  { id: "1", title: "Анализ требований", status: "todo", priority: "high", description: "Собрать требования заказчика", username: "Alex" },
+  { id: "2", title: "Создание макетов", status: "in-progress", priority: "medium", description: "Figma прототипы", username: "Maria", parentId: "1" },
+  { id: "3", title: "Настройка репозитория", status: "done", priority: "low", description: "GitHub init", username: "John" },
 ];

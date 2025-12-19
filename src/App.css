@@ -1,252 +1,257 @@
-#root {
-  width: 100%;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  font-family: 'Montserrat';
-}
+@import "tailwindcss";
 
-/* Стили для React Flow */
-.react-flow__node {
-  cursor: grab;
-}
-.react-flow__node:active {
-  cursor: grabbing;
-}
-/* ... (Остальные стили без изменений) ... */
-
-/* --- Modal Styles --- */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.6); /* Чуть темнее фон */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
-
-.modal {
-  background: white;
-  width: 800px; /* Делаем шире */
-  max-width: 90vw; /* Адаптивность */
-  min-height: 500px; /* Минимальная высота */
-  border-radius: 12px; /* Более скругленные углы */
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+.kanban-widget-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
 }
 
-.modal-header {
-  padding: 24px;
-  border-bottom: 1px solid #eee;
+.kanban-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
 }
-.modal-header h3 { margin: 0; font-size: 20px; font-weight: 600; }
 
-.modal-body {
-  padding: 24px;
+.kanban-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.add-column-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.add-column-btn:hover { background: #2563eb; }
+
+/* Wrapper for columns row */
+.kanban-columns-wrapper {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  align-items: flex-start;
+  height: 100%;
+  padding-bottom: 8px;
+}
+
+/* Individual Column */
+.kanban-column {
+  background: #f1f5f9;
+  border-radius: 12px;
+  width: 300px;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  flex: 1; /* Растягиваем тело на всю высоту */
-  overflow-y: auto;
+  max-height: 100%;
+  border: 1px solid #cbd5e1;
 }
 
-/* Стили для полей Click-to-Edit */
-.editable-container {
-  padding: 8px;
-  border: 1px dashed transparent; /* Прозрачная рамка, чтобы не прыгало */
-  border-radius: 6px;
-  cursor: text;
+.column-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.column-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.task-count {
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.done-icon { color: #22c55e; }
+
+.column-title-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+}
+
+/* Task List Area */
+.kanban-task-list {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 50px; /* Чтобы можно было бросить задачу в пустую колонку */
+}
+
+/* Task Card */
+.kanban-task-card {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: grab;
+  border: 1px solid transparent;
   transition: all 0.2s;
 }
 
-.editable-container:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+.kanban-task-card:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+  border-color: #93c5fd;
 }
 
-.modal-input-edit, .modal-textarea-edit {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #3b82f6; /* Синяя рамка при редактировании */
-  border-radius: 6px;
-  outline: none;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.kanban-task-card:active {
+  cursor: grabbing;
 }
 
-.modal-textarea-edit {
-  min-height: 120px;
-  resize: vertical;
-}
-
-/* Стандартные инпуты для селектов и дат */
-.modal-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  background: #f9fafb;
-}
-
-.modal-actions {
-  padding: 24px;
-  border-top: 1px solid #eee;
+.task-header {
   display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  background: #fafafa;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
+.task-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1e293b;
+  line-height: 1.2;
 }
 
-.modal-body {
-  padding: 16px;
-}
-
-/* Форма в модалке */
-.modal-input {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.modal-textarea {
-  width: 100%;
-  height: 80px;
-  padding: 8px;
-  margin-bottom: 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  resize: none;
-  box-sizing: border-box;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
-/* Кнопка управления колонкой (троеточие) */
-.column-menu-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.column-menu-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-/* Выпадающее меню */
-.column-dropdown {
-  position: absolute;
-  top: 40px;
-  right: 10px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
-  width: 180px;
-  display: flex;
-  flex-direction: column;
+.task-desc {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0 0 8px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.column-dropdown button {
-  background: none;
-  border: none;
-  padding: 10px 16px;
-  text-align: left;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
+.task-parent-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  background: #f3e8ff;
+  color: #7e22ce;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 8px;
 }
 
-.column-dropdown button:hover {
-  background: #f3f4f6;
+.task-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
 }
 
-.column-dropdown button.delete-btn {
-  color: #ef4444;
-}
-.column-dropdown button.delete-btn:hover {
-  background: #fef2f2;
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
 }
 
-/* Кнопка добавления задачи снизу */
+.task-date {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* Priority Badges */
+.priority-badge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.priority-high { background-color: #ef4444; }
+.priority-medium { background-color: #f59e0b; }
+.priority-low { background-color: #22c55e; }
+
+/* Dropdowns & Buttons reused from previous CSS mostly */
 .add-task-btn {
-  width: 100%;
+  margin-top: auto;
   padding: 12px;
-  background: transparent;
   border: none;
-  border-top: 1px solid #e5e7eb;
-  color: #6b7280;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background 0.2s, color 0.2s;
-  font-size: 14px;
-  font-weight: 500;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  transition: all 0.2s;
 }
+.add-task-btn:hover { background: #e2e8f0; color: #1e293b; }
 
-.add-task-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
+.column-menu-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px;
+  border-radius: 4px;
 }
+.column-menu-btn:hover { background: #f1f5f9; color: #1e293b; }
 
-.column-dropdown-portal {
-  position: fixed; /* Важно: fixed, чтобы не зависеть от зума канбана */
+.column-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 9999; /* Поверх всего */
-  width: 160px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 50;
   display: flex;
   flex-direction: column;
+  min-width: 160px;
   overflow: hidden;
-  padding: 4px 0;
 }
 
-.column-dropdown-portal button {
-  background: none;
+.column-dropdown button {
+  background: transparent;
   border: none;
-  padding: 8px 16px;
+  padding: 8px 12px;
   text-align: left;
   cursor: pointer;
-  font-size: 14px;
-  color: #374151;
-  width: 100%;
+  font-size: 0.9rem;
+  color: #334155;
 }
-
-.column-dropdown-portal button:hover { background: #f3f4f6; }
-.column-dropdown-portal button.delete-btn { color: #ef4444; }
-.column-dropdown-portal button.delete-btn:hover { background: #fef2f2; }
+.column-dropdown button:hover { background: #f8fafc; }
+.column-dropdown .delete-btn { color: #ef4444; }
+.column-dropdown .delete-btn:hover { background: #fef2f2; }
