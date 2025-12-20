@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
-import { Plus, MoreVertical } from 'lucide-react';
+import { Plus, MoreVertical, Calendar, AlertCircle } from 'lucide-react';
 
 import TaskModal from "./kanban/TaskModal";
 import DeleteColumnModal from "./kanban/DeleteColumnModal";
@@ -11,28 +11,11 @@ import { getPriorityWeight } from "../utils/kanbanUtils";
 
 export const KanbanBoardWidget: React.FC = () => {
   const {
-    columns,
-    tasks,
-    taskModal,
-    setTaskModal,
-    deleteColumnModal,
-    setDeleteColumnModal,
-    deleteTaskModal, 
-    setDeleteTaskModal,
-    handleDeleteTask,
-    openDeleteTaskModal,
-    handleSaveTask,
-    handleDeleteColumn,
-    openSubtaskModal,
-    openEditTaskModal,
-    handleCreateColumn,
-    handleRenameColumn,
-    confirmDeleteColumn,
-    handleSetDoneColumn,
-    openNewTaskModal,
-    handleDragStart,
-    handleDragOver,
-    handleDrop
+    columns, tasks, taskModal, setTaskModal, deleteColumnModal, setDeleteColumnModal,
+    deleteTaskModal, setDeleteTaskModal, handleDeleteTask, openDeleteTaskModal,
+    handleSaveTask, handleDeleteColumn, openSubtaskModal, openEditTaskModal,
+    handleCreateColumn, handleRenameColumn, confirmDeleteColumn, handleSetDoneColumn,
+    openNewTaskModal, handleDragStart, handleDragOver, handleDrop
   } = useKanbanBoard();
 
   const tasksInColumnToDelete = deleteColumnModal.colId 
@@ -44,15 +27,22 @@ export const KanbanBoardWidget: React.FC = () => {
     : 0;
 
   return (
-    <div className="kanban-widget-container">
-      <div className="kanban-header">
-        <h2 className="kanban-title">Доска задач</h2>
-        <button className="add-column-btn" onClick={handleCreateColumn}>
-          <Plus size={16} /> Добавить колонку
+    <div className="kanban-widget-container h-full flex flex-col font-sans text-slate-800">
+      {/* Header */}
+      <div className="kanban-header flex justify-between items-center mb-6 px-2">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+          Задачи проекта
+        </h2>
+        <button 
+          onClick={handleCreateColumn} 
+          className="add-column-btn flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95"
+        >
+          <Plus size={18} /> <span>Колонка</span>
         </button>
       </div>
 
-      <div className="kanban-columns-wrapper">
+      {/* Columns Wrapper */}
+      <div className="kanban-columns-wrapper flex gap-6 overflow-x-auto pb-6 px-2 flex-1 items-start">
         {columns.map((col) => {
           const colTasks = tasks.filter(t => t.status === col.id)
             .sort((a, b) => getPriorityWeight(b.priority) - getPriorityWeight(a.priority));
@@ -60,10 +50,11 @@ export const KanbanBoardWidget: React.FC = () => {
           return (
             <div 
               key={col.id} 
-              className="kanban-column"
+              className="kanban-column w-80 shrink-0 flex flex-col bg-slate-100/80 rounded-2xl border border-slate-200 shadow-sm max-h-full"
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, col.id)}
             >
+              {/* Column Header */}
               <ColumnHeader 
                 col={col} 
                 onRename={handleRenameColumn} 
@@ -72,45 +63,73 @@ export const KanbanBoardWidget: React.FC = () => {
                 taskCount={colTasks.length}
               />
 
-              <div className="kanban-task-list">
-                {colTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="kanban-task-card"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task.id)}
-                    onClick={() => openEditTaskModal(task)}
-                  >
-                    <div className="task-header">
-                      <span className="task-title">{task.title}</span>
-                      {task.priority && (
-                        <span className={`priority-badge priority-${task.priority}`} />
-                      )}
-                    </div>
-                    {task.description && (
-                      <p className="task-desc">{task.description}</p>
-                    )}
-                    {task.parentId && (
-                      <div className="task-parent-badge">
-                         ↳ Подзадача
+              {/* Task List */}
+              <div className="kanban-task-list p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar min-h-[50px]">
+                {colTasks.map((task) => {
+                  // 4. Проверка дедлайна
+                  const isExpired = task.deadline && new Date(task.deadline) < new Date() && !col.isDoneColumn;
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={`kanban-task-card p-4 rounded-xl shadow-sm bg-white cursor-grab active:cursor-grabbing border-2 transition-all hover:shadow-md relative group
+                        ${isExpired ? 'border-red-400 bg-red-50' : 'border-transparent hover:border-indigo-300'}`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, task.id)}
+                      onClick={() => openEditTaskModal(task)}
+                    >
+                      {/* Priority & Deadline */}
+                      <div className="flex justify-between items-start mb-2">
+                        {task.priority ? (
+                           <span className={`h-1.5 w-8 rounded-full ${
+                             task.priority === 'high' ? 'bg-red-500' : 
+                             task.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'
+                           }`} />
+                        ) : <span className="h-1.5 w-8 rounded-full bg-slate-200" />} {/* Без приоритета */}
+                        
+                        {task.deadline && (
+                          <div className={`text-[10px] font-bold flex items-center gap-1 ${isExpired ? 'text-red-600 animate-pulse' : 'text-slate-400'}`}>
+                            {isExpired && <AlertCircle size={10} />}
+                            <Calendar size={10} /> {new Date(task.deadline).toLocaleDateString()}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <div className="task-footer">
-                        {task.username && <div className="user-avatar">{task.username[0]}</div>}
-                        {task.deadline && <span className="task-date">{new Date(task.deadline).toLocaleDateString()}</span>}
+
+                      <h4 className="text-sm font-bold text-slate-700 leading-snug mb-1 group-hover:text-indigo-700 transition-colors">
+                        {task.title}
+                      </h4>
+                      
+                      {task.description && (
+                        <p className="text-xs text-slate-400 line-clamp-2 mb-3">{task.description}</p>
+                      )}
+
+                      {/* Footer: Assignee & Parent Badge */}
+                      <div className="flex items-end justify-between mt-2">
+                        {task.parentId && (
+                          <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                             ↳ Подзадача
+                          </span>
+                        )}
+                        {task.username && (
+                           <div className="w-6 h-6 rounded-full bg-slate-200 text-[10px] flex items-center justify-center font-bold text-slate-600 border border-white shadow-sm ml-auto" title={task.username}>
+                             {task.username[0]}
+                           </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <button className="add-task-btn" onClick={() => openNewTaskModal(col.id)}>
+              <button className="add-task-btn p-3 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 rounded-b-2xl transition-colors font-semibold text-sm flex items-center justify-center gap-2 border-t border-slate-200" onClick={() => openNewTaskModal(col.id)}>
                 <Plus size={16} /> Добавить задачу
               </button>
             </div>
           );
         })}
       </div>
-      
+
+      {/* Modals via Portal */}
       {taskModal.isOpen && ReactDOM.createPortal(
         <TaskModal 
             isOpen={taskModal.isOpen}
@@ -150,11 +169,11 @@ export const KanbanBoardWidget: React.FC = () => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Column Header Component
 const ColumnHeader = ({ col, onRename, onDelete, onSetDone, taskCount }: any) => {
-    const [isEditing, setIsEditing] = useState(col.isEditing);
-    const [title, setTitle] = useState(col.title);
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [isEditing, setIsEditing] = React.useState(col.isEditing);
+    const [title, setTitle] = React.useState(col.title);
+    const [menuOpen, setMenuOpen] = React.useState(false);
 
     const handleRename = () => {
         setIsEditing(false);
@@ -162,7 +181,7 @@ const ColumnHeader = ({ col, onRename, onDelete, onSetDone, taskCount }: any) =>
     };
 
     return (
-        <div className="column-header">
+        <div className="column-header p-4 flex justify-between items-center bg-white rounded-t-2xl border-b border-slate-200">
             {isEditing ? (
                 <input 
                     autoFocus
@@ -170,28 +189,30 @@ const ColumnHeader = ({ col, onRename, onDelete, onSetDone, taskCount }: any) =>
                     onChange={e => setTitle(e.target.value)} 
                     onBlur={handleRename}
                     onKeyDown={e => e.key === 'Enter' && handleRename()}
-                    className="column-title-input"
+                    className="w-full text-sm font-bold border-b-2 border-indigo-500 outline-none pb-1"
                 />
             ) : (
-                <div className="column-title-wrapper">
-                    {col.isDoneColumn && <span className="done-icon">✓</span>}
-                    <span onDoubleClick={() => setIsEditing(true)} className="column-title">
-                        {col.title} <span className="task-count">{taskCount}</span>
+                <div className="flex items-center gap-2">
+                    {col.isDoneColumn && <span className="text-emerald-500 font-bold">✓</span>}
+                    <span onDoubleClick={() => setIsEditing(true)} className="font-bold text-slate-700 text-sm uppercase tracking-wide cursor-text">
+                        {col.title}
                     </span>
+                    <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{taskCount}</span>
                 </div>
             )}
             
             <div className="relative">
-                <button className="column-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
+                <button className="text-slate-400 hover:bg-slate-100 p-1 rounded-md transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
                     <MoreVertical size={16} />
                 </button>
                 {menuOpen && (
                     <>
-                        <div className="fixed inset-0" onClick={() => setMenuOpen(false)} />
-                        <div className="column-dropdown">
-                            <button onClick={() => { setIsEditing(true); setMenuOpen(false); }}>Переименовать</button>
-                            <button onClick={() => { onSetDone(col.id); setMenuOpen(false); }}>Сделать завершающей</button>
-                            <button className="delete-btn" onClick={() => { onDelete(col.id); setMenuOpen(false); }}>Удалить</button>
+                        <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                        <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                            <button className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50" onClick={() => { setIsEditing(true); setMenuOpen(false); }}>Переименовать</button>
+                            <button className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50" onClick={() => { onSetDone(col.id); setMenuOpen(false); }}>Сделать завершающей</button>
+                            <div className="h-px bg-slate-100 my-1" />
+                            <button className="w-full text-left px-4 py-2 text-xs font-semibold text-red-500 hover:bg-red-50" onClick={() => { onDelete(col.id); setMenuOpen(false); }}>Удалить</button>
                         </div>
                     </>
                 )}

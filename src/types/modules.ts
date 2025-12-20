@@ -1,14 +1,19 @@
+export interface ITaskHistory {
+  updatedAt: number;
+  action: string;
+}
+
 export interface ITaskData {
   id: string;
   title: string;
   description?: string;
-  status: string; // id колонки
+  status: string;
   priority?: 'low' | 'medium' | 'high';
-  deadline?: string;
-  username?: string; // Имя пользователя
-  parentId?: string; // Для подзадач
-  width?: number; // Для совместимости с node data
-  height?: number; // Для совместимости с node data
+  username?: string;
+  parentId?: string;
+  deadline?: string; 
+  createdAt: number;
+  history: ITaskHistory[];
 }
 
 export interface ColumnData {
@@ -17,7 +22,5 @@ export interface ColumnData {
   x: number;
   y: number;
   width: number;
-  height: number;
-  isEditing: boolean;
   isDoneColumn?: boolean;
 }
