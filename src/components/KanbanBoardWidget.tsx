@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Plus, MoreVertical, Calendar, AlertCircle } from 'lucide-react';
+import { Plus, MoreVertical, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
 
 import TaskModal from "./kanban/TaskModal";
 import DeleteColumnModal from "./kanban/DeleteColumnModal";
@@ -15,8 +15,10 @@ export const KanbanBoardWidget: React.FC = () => {
     deleteTaskModal, setDeleteTaskModal, handleDeleteTask, openDeleteTaskModal,
     handleSaveTask, handleDeleteColumn, openSubtaskModal, openEditTaskModal,
     handleCreateColumn, handleRenameColumn, confirmDeleteColumn, handleSetDoneColumn,
-    openNewTaskModal, handleDragStart, handleDragOver, handleDrop
-  } = useKanbanBoard();
+    openNewTaskModal, handleDragStart, handleDragOver, handleDrop,
+    // Новые поля
+    isSynced, toggleSync
+  } = useKanbanBoard('kanban');
 
   const tasksInColumnToDelete = deleteColumnModal.colId 
     ? tasks.filter(t => t.status === deleteColumnModal.colId).length 
@@ -33,12 +35,29 @@ export const KanbanBoardWidget: React.FC = () => {
         <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
           Задачи проекта
         </h2>
-        <button 
-          onClick={handleCreateColumn} 
-          className="add-column-btn flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95"
-        >
-          <Plus size={18} /> <span>Колонка</span>
-        </button>
+        
+        <div className="flex gap-3">
+            {/* Кнопка синхронизации */}
+            <button 
+                onClick={toggleSync}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-all border ${
+                    isSynced 
+                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                }`}
+                title={isSynced ? "Отключить синхронизацию" : "Включить синхронизацию с Mind Map"}
+            >
+                <RefreshCw size={16} className={isSynced ? "animate-spin-slow" : ""} />
+                {isSynced ? "Synced" : "Sync"}
+            </button>
+
+            <button 
+            onClick={handleCreateColumn} 
+            className="add-column-btn flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95"
+            >
+            <Plus size={18} /> <span>Колонка</span>
+            </button>
+        </div>
       </div>
 
       {/* Columns Wrapper */}
@@ -54,7 +73,6 @@ export const KanbanBoardWidget: React.FC = () => {
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, col.id)}
             >
-              {/* Column Header */}
               <ColumnHeader 
                 col={col} 
                 onRename={handleRenameColumn} 
@@ -63,12 +81,9 @@ export const KanbanBoardWidget: React.FC = () => {
                 taskCount={colTasks.length}
               />
 
-              {/* Task List */}
               <div className="kanban-task-list p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar min-h-[50px]">
                 {colTasks.map((task) => {
-                  // 4. Проверка дедлайна
                   const isExpired = task.deadline && new Date(task.deadline) < new Date() && !col.isDoneColumn;
-
                   return (
                     <div
                       key={task.id}
@@ -78,14 +93,13 @@ export const KanbanBoardWidget: React.FC = () => {
                       onDragStart={(e) => handleDragStart(e, task.id)}
                       onClick={() => openEditTaskModal(task)}
                     >
-                      {/* Priority & Deadline */}
                       <div className="flex justify-between items-start mb-2">
                         {task.priority ? (
                            <span className={`h-1.5 w-8 rounded-full ${
                              task.priority === 'high' ? 'bg-red-500' : 
                              task.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'
                            }`} />
-                        ) : <span className="h-1.5 w-8 rounded-full bg-slate-200" />} {/* Без приоритета */}
+                        ) : <span className="h-1.5 w-8 rounded-full bg-slate-200" />}
                         
                         {task.deadline && (
                           <div className={`text-[10px] font-bold flex items-center gap-1 ${isExpired ? 'text-red-600 animate-pulse' : 'text-slate-400'}`}>
@@ -99,11 +113,6 @@ export const KanbanBoardWidget: React.FC = () => {
                         {task.title}
                       </h4>
                       
-                      {task.description && (
-                        <p className="text-xs text-slate-400 line-clamp-2 mb-3">{task.description}</p>
-                      )}
-
-                      {/* Footer: Assignee & Parent Badge */}
                       <div className="flex items-end justify-between mt-2">
                         {task.parentId && (
                           <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
@@ -169,7 +178,6 @@ export const KanbanBoardWidget: React.FC = () => {
   );
 };
 
-// Column Header Component
 const ColumnHeader = ({ col, onRename, onDelete, onSetDone, taskCount }: any) => {
     const [isEditing, setIsEditing] = React.useState(col.isEditing);
     const [title, setTitle] = React.useState(col.title);

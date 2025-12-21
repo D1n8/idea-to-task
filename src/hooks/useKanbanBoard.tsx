@@ -1,11 +1,18 @@
 import { useState, useCallback } from "react";
 import { nanoid } from "nanoid";
 import type { ITaskData, ColumnData, ITaskHistory } from "../types/modules";
-import { initialColumns, sampleTasks } from "../data/mockData";
+import { useKanbanContext } from "../context/KanbanContext";
 
-export const useKanbanBoard = () => {
-  const [columns, setColumns] = useState<ColumnData[]>(initialColumns);
-  const [tasks, setTasks] = useState<ITaskData[]>(sampleTasks);
+export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
+  const { 
+    kanbanTasks, mindMapTasks, columns, setColumns, 
+    updateTasks, isSynced, toggleSync, isMindMapVisible, setMindMapVisible 
+  } = useKanbanContext();
+
+  // Выбираем, с каким набором данных работать в текущем экземпляре хука
+  const tasks = source === 'kanban' ? kanbanTasks : mindMapTasks;
+  const setTasks = (action: any) => updateTasks(action, source);
+
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   // --- MODALS STATE ---
@@ -21,72 +28,50 @@ export const useKanbanBoard = () => {
     isOpen: false, taskId: null
   });
 
-  // --- ЛОГИКА КОЛОНОК ---
+  // --- LOGIC ---
+
   const handleCreateColumn = useCallback(() => {
     const baseTitle = "Новая колонка";
     let newTitle = baseTitle;
     let counter = 1;
-    
     while (columns.some(c => c.title.toLowerCase() === newTitle.toLowerCase())) {
       newTitle = `${baseTitle} (${counter++})`;
     }
-
-    const newCol: ColumnData = {
-      id: nanoid(),
-      title: newTitle,
-      x: 0, y: 0, width: 300
-    };
+    const newCol: ColumnData = { id: nanoid(), title: newTitle, x: 0, y: 0, width: 300 };
     setColumns(prev => [...prev, newCol]);
-  }, [columns]);
+  }, [columns, setColumns]);
 
   const handleRenameColumn = useCallback((colId: string, newTitle: string) => {
     setColumns(prev => prev.map(c => c.id === colId ? { ...c, title: newTitle } : c));
-  }, []);
+  }, [setColumns]);
 
   const handleSetDoneColumn = useCallback((colId: string) => {
     setColumns(prev => prev.map(col => ({ ...col, isDoneColumn: col.id === colId })));
-  }, []);
+  }, [setColumns]);
 
-  // --- ЛОГИКА ЗАДАЧ И ИСТОРИИ ---
   const handleSaveTask = useCallback((taskData: Partial<ITaskData>) => {
     const timestamp = Date.now();
     
-    setTasks(prev => {
+    setTasks((prev: ITaskData[]) => {
       if (taskModal.editingTask) {
         return prev.map(t => {
           if (t.id === taskModal.editingTask!.id) {
             const changes: string[] = [];
+            if (taskData.title && t.title !== taskData.title) changes.push(`Название изменено на "${taskData.title}"`);
             
-            if (taskData.title && t.title !== taskData.title) 
-              changes.push(`Название изменено на "${taskData.title}"`);
-            
-            // 2. Исправленная логика записи смены статуса
             if (taskData.status && t.status !== taskData.status) {
               const newCol = columns.find(c => c.id === taskData.status);
-              const colName = newCol ? newCol.title : taskData.status;
-              changes.push(`Статус изменен на: ${colName}`);
+              changes.push(`Статус изменен на: ${newCol?.title || taskData.status}`);
             }
-
-            if (taskData.deadline !== undefined && t.deadline !== taskData.deadline) 
-              changes.push(`Дедлайн: ${taskData.deadline || 'удален'}`);
-            
-            if (taskData.priority !== t.priority)
-              changes.push(`Приоритет: ${taskData.priority || 'снят'}`);
+            if (taskData.deadline !== t.deadline) changes.push(`Дедлайн изменен`);
 
             const newHistoryItem: ITaskHistory = {
               updatedAt: timestamp,
               action: changes.length > 0 ? changes.join("; ") : "Обновление информации"
             };
 
-            const updatedHistory = changes.length > 0 
-                ? [...(t.history || []), newHistoryItem] 
-                : (t.history || []);
-
-            return { 
-              ...t, 
-              ...taskData, 
-              history: updatedHistory 
-            } as ITaskData;
+            const updatedHistory = changes.length > 0 ? [...(t.history || []), newHistoryItem] : (t.history || []);
+            return { ...t, ...taskData, history: updatedHistory } as ITaskData;
           }
           return t;
         });
@@ -107,9 +92,9 @@ export const useKanbanBoard = () => {
       }
     });
     setTaskModal(prev => ({ ...prev, isOpen: false }));
-  }, [taskModal, columns]);
+  }, [taskModal, columns, setTasks]);
 
-  // --- DRAG AND DROP ---
+  // Drag & Drop
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = 'move';
@@ -122,15 +107,12 @@ export const useKanbanBoard = () => {
   const handleDrop = (e: React.DragEvent, colId: string) => {
     e.preventDefault();
     if (draggedTaskId) {
-      setTasks(prev => prev.map(t => {
+      setTasks((prev: ITaskData[]) => prev.map(t => {
         if (t.id === draggedTaskId && t.status !== colId) {
-            // 2. Исправленная запись для Drag & Drop
             const targetCol = columns.find(c => c.id === colId);
-            const colName = targetCol ? targetCol.title : colId;
-
             const historyItem: ITaskHistory = {
                 updatedAt: Date.now(),
-                action: `Статус изменен на: ${colName}`
+                action: `Статус изменен на: ${targetCol?.title || colId}`
             };
             return { ...t, status: colId, history: [...(t.history || []), historyItem] };
         }
@@ -140,7 +122,7 @@ export const useKanbanBoard = () => {
     }
   };
 
-  // --- MODALS ---
+  // Modals
   const openNewTaskModal = useCallback((status: string) => {
     setTaskModal({ isOpen: true, editingTask: null, status, parentId: undefined });
   }, []);
@@ -160,11 +142,11 @@ export const useKanbanBoard = () => {
 
   const handleDeleteColumn = useCallback(() => {
     if (deleteColumnModal.colId) {
-      setTasks(prev => prev.filter(t => t.status !== deleteColumnModal.colId));
+      setTasks((prev: ITaskData[]) => prev.filter(t => t.status !== deleteColumnModal.colId));
       setColumns(prev => prev.filter(c => c.id !== deleteColumnModal.colId));
       setDeleteColumnModal({ isOpen: false, colId: null });
     }
-  }, [deleteColumnModal.colId]);
+  }, [deleteColumnModal.colId, setTasks, setColumns]);
 
   const openDeleteTaskModal = useCallback((taskId: string) => {
     setDeleteTaskModal({ isOpen: true, taskId });
@@ -173,7 +155,7 @@ export const useKanbanBoard = () => {
   const handleDeleteTask = useCallback((deleteSubtasks: boolean) => {
     const taskId = deleteTaskModal.taskId;
     if (!taskId) return;
-    setTasks(prev => {
+    setTasks((prev: ITaskData[]) => {
         let newTasks = prev.filter(t => t.id !== taskId);
         if (deleteSubtasks) {
             newTasks = newTasks.filter(t => t.parentId !== taskId);
@@ -184,7 +166,7 @@ export const useKanbanBoard = () => {
     });
     setDeleteTaskModal({ isOpen: false, taskId: null });
     setTaskModal(prev => ({ ...prev, isOpen: false }));
-  }, [deleteTaskModal.taskId]);
+  }, [deleteTaskModal.taskId, setTasks]);
 
   return {
     columns, tasks,
@@ -195,6 +177,8 @@ export const useKanbanBoard = () => {
     handleSaveTask, handleCreateColumn, handleRenameColumn,
     confirmDeleteColumn, handleDeleteColumn, handleSetDoneColumn,
     openNewTaskModal, openEditTaskModal, openSubtaskModal,
-    handleDragStart, handleDragOver, handleDrop
+    handleDragStart, handleDragOver, handleDrop,
+    // Sync specific
+    isSynced, toggleSync, isMindMapVisible, setMindMapVisible
   };
 };
