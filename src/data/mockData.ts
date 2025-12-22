@@ -32,73 +32,40 @@ export const sampleTasks: ITaskData[] = [
     status: "in-progress",
     priority: "high",
     username: "Анна Смирнова",
-    deadline: getDateOffset(2), // Будущий дедлайн
+    deadline: getDateOffset(2),
     createdAt: now - dayInMs * 3,
-    history: [
-      { updatedAt: now - dayInMs * 3, action: "Задача создана" },
-      { updatedAt: now - dayInMs, action: "Статус изменен на: В работе" }
-    ]
+    history: [{ updatedAt: now - dayInMs * 3, action: "Задача создана" }]
   },
   {
     id: "2",
     title: "Исправить баги верстки",
-    description: "Поправить отступы в мобильной версии личного кабинета.",
+    description: "Поправить отступы в мобильной версии.",
     status: "todo",
     priority: "medium",
     username: "Иван Иванов",
-    deadline: getDateOffset(-1), // ПРОСРОЧЕННЫЙ дедлайн (вчера)
+    deadline: getDateOffset(-1), // Просрочено
     createdAt: now - dayInMs * 5,
-    history: [
-      { updatedAt: now - dayInMs * 5, action: "Задача создана" }
-    ]
+    history: [{ updatedAt: now - dayInMs * 5, action: "Задача создана" }]
   },
   {
     id: "3",
-    title: "Написать документацию по API",
-    description: "Описать все эндпоинты для модуля аутентификации.",
+    title: "Написать документацию",
+    description: "Описать API.",
     status: "review",
-    priority: undefined, // Задача без приоритета
-    username: "", // Без исполнителя
+    priority: undefined,
+    username: "",
     deadline: getDateOffset(5),
     createdAt: now - dayInMs * 2,
-    history: [
-      { updatedAt: now - dayInMs * 2, action: "Задача создана" }
-    ]
-  },
-  {
-    id: "4",
-    title: "Интеграция с платежным шлюзом",
-    description: "Подключить Stripe и протестировать тестовые платежи.",
-    status: "todo",
-    priority: "high",
-    username: "Алексей Попов",
-    createdAt: now - dayInMs * 1,
-    history: [
-      { updatedAt: now - dayInMs * 1, action: "Задача создана" }
-    ]
-  },
-  {
-    id: "5",
-    title: "Подготовка презентации",
-    status: "done",
-    priority: "low",
-    username: "Елена Кузнецова",
-    createdAt: now - dayInMs * 10,
-    history: [
-      { updatedAt: now - dayInMs * 10, action: "Задача создана" },
-      { updatedAt: now - dayInMs * 1, action: "Перемещена в: Готово" }
-    ]
+    history: [{ updatedAt: now - dayInMs * 2, action: "Задача создана" }]
   },
   {
     id: "6",
-    title: "Собрать требования от заказчика",
+    title: "Собрать требования",
     status: "done",
     priority: "medium",
-    parentId: "1", // Подзадача для задачи №1
+    parentId: "1", // Подзадача
     username: "Анна Смирнова",
     createdAt: now - dayInMs * 12,
-    history: [
-      { updatedAt: now - dayInMs * 12, action: "Задача создана" }
-    ]
+    history: [{ updatedAt: now - dayInMs * 12, action: "Задача создана" }]
   }
 ];

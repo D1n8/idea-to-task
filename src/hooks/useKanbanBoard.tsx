@@ -9,7 +9,6 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     updateTasks, isSynced, toggleSync, isMindMapVisible, setMindMapVisible 
   } = useKanbanContext();
 
-  // Выбираем, с каким набором данных работать в текущем экземпляре хука
   const tasks = source === 'kanban' ? kanbanTasks : mindMapTasks;
   const setTasks = (action: any) => updateTasks(action, source);
 
@@ -28,7 +27,7 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     isOpen: false, taskId: null
   });
 
-  // --- LOGIC ---
+  // --- ACTIONS ---
 
   const handleCreateColumn = useCallback(() => {
     const baseTitle = "Новая колонка";
@@ -57,11 +56,10 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
         return prev.map(t => {
           if (t.id === taskModal.editingTask!.id) {
             const changes: string[] = [];
-            if (taskData.title && t.title !== taskData.title) changes.push(`Название изменено на "${taskData.title}"`);
-            
+            if (taskData.title && t.title !== taskData.title) changes.push(`Название изменено`);
             if (taskData.status && t.status !== taskData.status) {
-              const newCol = columns.find(c => c.id === taskData.status);
-              changes.push(`Статус изменен на: ${newCol?.title || taskData.status}`);
+                const col = columns.find(c => c.id === taskData.status);
+                changes.push(`Статус: ${col?.title || taskData.status}`);
             }
             if (taskData.deadline !== t.deadline) changes.push(`Дедлайн изменен`);
 
@@ -94,7 +92,6 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     setTaskModal(prev => ({ ...prev, isOpen: false }));
   }, [taskModal, columns, setTasks]);
 
-  // Drag & Drop
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = 'move';
@@ -109,10 +106,10 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     if (draggedTaskId) {
       setTasks((prev: ITaskData[]) => prev.map(t => {
         if (t.id === draggedTaskId && t.status !== colId) {
-            const targetCol = columns.find(c => c.id === colId);
+            const col = columns.find(c => c.id === colId);
             const historyItem: ITaskHistory = {
                 updatedAt: Date.now(),
-                action: `Статус изменен на: ${targetCol?.title || colId}`
+                action: `Статус изменен на: ${col?.title || colId}`
             };
             return { ...t, status: colId, history: [...(t.history || []), historyItem] };
         }
@@ -122,7 +119,6 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     }
   };
 
-  // Modals
   const openNewTaskModal = useCallback((status: string) => {
     setTaskModal({ isOpen: true, editingTask: null, status, parentId: undefined });
   }, []);
@@ -178,7 +174,6 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     confirmDeleteColumn, handleDeleteColumn, handleSetDoneColumn,
     openNewTaskModal, openEditTaskModal, openSubtaskModal,
     handleDragStart, handleDragOver, handleDrop,
-    // Sync specific
     isSynced, toggleSync, isMindMapVisible, setMindMapVisible
   };
 };

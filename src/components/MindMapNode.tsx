@@ -5,7 +5,6 @@ import { MindMapWidget } from './MindMapWidget';
 export const MindMapNode: React.FC<NodeProps> = ({ data }) => {
   return (
     <div 
-        className="nodrag cursor-default" 
         style={{ 
             minWidth: 900, 
             minHeight: 700, 
@@ -13,7 +12,9 @@ export const MindMapNode: React.FC<NodeProps> = ({ data }) => {
             borderRadius: 24,
             boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
             border: '1px solid #e2e8f0',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
         }}
     >
       <MindMapWidget />

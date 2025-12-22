@@ -16,7 +16,6 @@ export const KanbanBoardWidget: React.FC = () => {
     handleSaveTask, handleDeleteColumn, openSubtaskModal, openEditTaskModal,
     handleCreateColumn, handleRenameColumn, confirmDeleteColumn, handleSetDoneColumn,
     openNewTaskModal, handleDragStart, handleDragOver, handleDrop,
-    // Новые поля
     isSynced, toggleSync
   } = useKanbanBoard('kanban');
 
@@ -30,14 +29,12 @@ export const KanbanBoardWidget: React.FC = () => {
 
   return (
     <div className="kanban-widget-container h-full flex flex-col font-sans text-slate-800">
-      {/* Header */}
-      <div className="kanban-header flex justify-between items-center mb-6 px-2">
+      <div className="kanban-header flex justify-between items-center mb-6 px-4 py-2 border-b border-slate-200 bg-white cursor-move">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
           Задачи проекта
         </h2>
         
-        <div className="flex gap-3">
-            {/* Кнопка синхронизации */}
+        <div className="flex gap-3 nodrag">
             <button 
                 onClick={toggleSync}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-all border ${
@@ -60,8 +57,8 @@ export const KanbanBoardWidget: React.FC = () => {
         </div>
       </div>
 
-      {/* Columns Wrapper */}
-      <div className="kanban-columns-wrapper flex gap-6 overflow-x-auto pb-6 px-2 flex-1 items-start">
+      {/* Колонки */}
+      <div className="kanban-columns-wrapper flex gap-6 overflow-x-auto pb-6 px-4 flex-1 items-start nodrag cursor-default">
         {columns.map((col) => {
           const colTasks = tasks.filter(t => t.status === col.id)
             .sort((a, b) => getPriorityWeight(b.priority) - getPriorityWeight(a.priority));
@@ -138,7 +135,6 @@ export const KanbanBoardWidget: React.FC = () => {
         })}
       </div>
 
-      {/* Modals via Portal */}
       {taskModal.isOpen && ReactDOM.createPortal(
         <TaskModal 
             isOpen={taskModal.isOpen}

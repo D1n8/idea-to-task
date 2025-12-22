@@ -1,34 +1,30 @@
 import React, { useMemo } from 'react';
 import ReactDOM from "react-dom";
-import { Plus, RefreshCw, X, AlertCircle } from 'lucide-react';
-import type { ITaskData } from '../types/modules';
+import { Plus, RefreshCw, X, AlertCircle, Calendar, User } from 'lucide-react';
+import { type ITaskData } from '../types/modules';
 import { useKanbanBoard } from '../hooks/useKanbanBoard';
 import TaskModal from './kanban/TaskModal';
 import DeleteTaskModal from './kanban/DeleteTaskModal';
 
-// Компонент одной ноды дерева
 const MindMapItem = ({ 
   task, 
   allTasks, 
-  level, 
   onEdit, 
   onAddChild 
 }: { 
   task: ITaskData, 
   allTasks: ITaskData[], 
-  level: number,
   onEdit: (t: ITaskData) => void,
   onAddChild: (id: string) => void
 }) => {
   const children = allTasks.filter(t => t.parentId === task.id);
-  const isExpired = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'done'; // упрощенная проверка статуса
+  const isExpired = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'done';
 
   return (
     <div className="flex flex-col items-center relative">
-      {/* Карточка задачи */}
       <div 
         className={`
-          relative z-10 w-48 p-3 rounded-xl border-2 shadow-sm bg-white cursor-pointer hover:shadow-md transition-all
+          relative z-10 w-56 p-3 rounded-xl border-2 shadow-sm bg-white cursor-pointer hover:shadow-md transition-all
           ${isExpired ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-indigo-400'}
         `}
         onClick={() => onEdit(task)}
@@ -40,43 +36,53 @@ const MindMapItem = ({
                     task.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'
                 }`} />
             ) : <div className="h-1.5 w-6 rounded-full bg-slate-200" />}
-            {isExpired && <AlertCircle size={12} className="text-red-500" />}
+            {isExpired && <AlertCircle size={14} className="text-red-500 animate-pulse" />}
         </div>
-        <h4 className="text-sm font-bold text-slate-700 truncate text-center">{task.title}</h4>
         
-        <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-50">
-           <span className="text-[9px] text-slate-400 font-mono">#{task.id.slice(0,4)}</span>
+        <h4 className="text-sm font-bold text-slate-700 truncate text-center mb-2">{task.title}</h4>
+        
+        <div className="flex justify-between items-center text-[10px] text-slate-500 mb-2 px-1">
+            {task.deadline ? (
+                <div className="flex items-center gap-1">
+                    <Calendar size={10} /> 
+                    <span className={isExpired ? 'text-red-600 font-bold' : ''}>
+                        {new Date(task.deadline).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+                    </span>
+                </div>
+            ) : <span></span>}
+            
+            {task.username && (
+                <div className="flex items-center gap-1 max-w-[80px]">
+                    <User size={10} />
+                    <span className="truncate">{task.username.split(' ')[0]}</span>
+                </div>
+            )}
+        </div>
+
+        <div className="flex justify-center mt-1 pt-2 border-t border-slate-100">
            <button 
              onClick={(e) => { e.stopPropagation(); onAddChild(task.id); }}
-             className="w-5 h-5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition-colors"
+             className="w-full py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center gap-1 transition-colors text-[10px] font-bold"
            >
-             <Plus size={12} />
+             <Plus size={10} /> Добавить подзадачу
            </button>
         </div>
       </div>
 
-      {/* Рендеринг детей и линий */}
       {children.length > 0 && (
-        <div className="flex pt-8 gap-4 relative">
-            {/* Вертикальная линия от родителя вниз */}
+        <div className="flex pt-8 gap-6 relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-slate-300" />
-            
-            {/* Горизонтальная линия, соединяющая детей */}
             {children.length > 1 && (
                 <div className="absolute top-8 left-1/2 -translate-x-1/2 h-0.5 bg-slate-300" 
-                     style={{ width: `calc(100% - 12rem)` }} // Примерный расчет ширины
+                     style={{ width: `calc(100% - 14rem)` }} 
                 /> 
             )}
-
-            {children.map((child, idx) => (
+            {children.map((child) => (
                <div key={child.id} className="flex flex-col items-center relative">
-                  {/* Соединитель для каждого ребенка */}
                    <div className="w-0.5 h-4 bg-slate-300 mb-0" />
-                   {/* Рекурсивный вызов */}
                    <MindMapItem 
                      task={child} 
                      allTasks={allTasks} 
-                     level={level + 1} 
                      onEdit={onEdit}
                      onAddChild={onAddChild}
                    />
@@ -89,7 +95,6 @@ const MindMapItem = ({
 };
 
 export const MindMapWidget: React.FC = () => {
-  // Используем контекст с источником 'mindmap'
   const {
     tasks, columns,
     taskModal, setTaskModal,
@@ -102,14 +107,14 @@ export const MindMapWidget: React.FC = () => {
   const rootTasks = useMemo(() => tasks.filter(t => !t.parentId), [tasks]);
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 font-sans relative overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-20">
+    <div className="h-full flex flex-col bg-slate-50 font-sans relative overflow-hidden rounded-2xl">
+      <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-20 cursor-move">
         <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
             Mind Map
             {isSynced && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">Synced</span>}
         </h2>
-        <div className="flex gap-2">
+        
+        <div className="flex gap-2 nodrag">
             <button 
                 onClick={toggleSync}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
@@ -119,33 +124,29 @@ export const MindMapWidget: React.FC = () => {
                 }`}
             >
                 <RefreshCw size={14} className={isSynced ? "animate-spin-slow" : ""} />
-                {isSynced ? "Синхронизировано" : "Синхронизировать"}
+                {isSynced ? "Synced" : "Sync"}
             </button>
             <button 
                 onClick={() => setMindMapVisible(false)}
                 className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                title="Закрыть виджет"
             >
                 <X size={18} />
             </button>
         </div>
       </div>
 
-      {/* Canvas Area */}
-      <div className="flex-1 overflow-auto p-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px]">
+      <div className="flex-1 overflow-auto p-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] nodrag cursor-default">
          <div className="flex justify-center gap-16 min-w-max">
             {rootTasks.map(root => (
                 <MindMapItem 
                     key={root.id} 
                     task={root} 
                     allTasks={tasks} 
-                    level={0} 
                     onEdit={openEditTaskModal}
                     onAddChild={openSubtaskModal}
                 />
             ))}
             
-            {/* Кнопка создания корневой задачи */}
             <div className="flex flex-col items-center justify-start pt-0">
                 <button 
                     onClick={() => openNewTaskModal('todo')}
@@ -157,7 +158,6 @@ export const MindMapWidget: React.FC = () => {
          </div>
       </div>
 
-      {/* Modals */}
       {taskModal.isOpen && ReactDOM.createPortal(
         <TaskModal 
             isOpen={taskModal.isOpen}
@@ -165,9 +165,9 @@ export const MindMapWidget: React.FC = () => {
             editingTask={taskModal.editingTask}
             initialStatus={taskModal.status}
             initialParentId={taskModal.parentId}
-            columns={columns} // Колонки нужны для статуса, даже в MindMap
+            columns={columns}
             allTasks={tasks}
-            users={['Иван Иванов', 'Анна Смирнова']} // Можно прокинуть пропсом, тут хардкод для примера
+            users={['Иван Иванов', 'Анна Смирнова']}
             onSave={handleSaveTask}
             onOpenParent={(pid) => { const p = tasks.find(t => t.id === pid); if(p) openEditTaskModal(p); }}
             onAddSubtask={openSubtaskModal}

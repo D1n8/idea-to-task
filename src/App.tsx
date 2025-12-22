@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import ReactFlow, { Background, type Node, type NodeTypes, useNodesState } from 'reactflow';
+import ReactFlow, { Background, type Node, type NodeTypes, useNodesState, useEdgesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './App.css';
 
@@ -7,13 +7,11 @@ import { KanbanNode } from './components/KanbanNode';
 import { MindMapNode } from './components/MindMapNode';
 import { KanbanProvider, useKanbanContext } from './context/KanbanContext';
 
-// Регистрируем типы узлов
 const nodeTypes: NodeTypes = {
   kanbanBoard: KanbanNode,
   mindMap: MindMapNode,
 };
 
-// Внутренний компонент для доступа к контексту
 const FlowBoard = () => {
   const { isMindMapVisible } = useKanbanContext();
   
@@ -23,12 +21,13 @@ const FlowBoard = () => {
       type: 'kanbanBoard',
       position: { x: 100, y: 100 },
       data: { label: 'Kanban Board' },
+      dragHandle: '.kanban-header' // Заголовок Канбана
     },
   ];
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // Следим за флагом видимости MindMap и добавляем/удаляем узел
   useEffect(() => {
     setNodes((nds) => {
       const exists = nds.find(n => n.id === 'mindmap-1');
@@ -37,17 +36,13 @@ const FlowBoard = () => {
         return [...nds, {
           id: 'mindmap-1',
           type: 'mindMap',
-          position: { x: 1000, y: 100 }, // Появляется справа
-          data: { label: 'Mind Map' }
+          position: { x: 1000, y: 100 },
+          data: { label: 'Mind Map' },
+          dragHandle: '.p-4' // Заголовок MindMap (класс .p-4)
         }];
       } 
       
       if (!isMindMapVisible && exists) {
-        // Опционально: можно не удалять, а просто оставлять как есть, 
-        // но по логике "открытия по кнопке" можно и удалить.
-        // В ТЗ сказано "появляется виджет", поэтому добавляем.
-        // Чтобы пользователь мог его закрыть "крестиком" на виджете (setMindMapVisible(false)),
-        // мы удаляем его из nodes.
         return nds.filter(n => n.id !== 'mindmap-1');
       }
 
@@ -59,7 +54,9 @@ const FlowBoard = () => {
     <div style={{ width: '100vw', height: '100vh', background: '#eef2f6' }}>
       <ReactFlow
         nodes={nodes}
+        edges={edges}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.1}
