@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import ReactDOM from "react-dom";
 import { Plus, RefreshCw, X, AlertCircle, Calendar, User } from 'lucide-react';
-import { type ITaskData } from '../types/modules';
+import type { ITaskData } from '../types/modules';
 import { useKanbanBoard } from '../hooks/useKanbanBoard';
+import { AVAILABLE_USERS } from "../data/mockData";
 import TaskModal from './kanban/TaskModal';
 import DeleteTaskModal from './kanban/DeleteTaskModal';
 
@@ -18,7 +19,8 @@ const MindMapItem = ({
   onAddChild: (id: string) => void
 }) => {
   const children = allTasks.filter(t => t.parentId === task.id);
-  const isExpired = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'done';
+  // Проверка статуса упрощенная, но можно расширить прокинув колонки
+  const isExpired = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'done'; 
 
   return (
     <div className="flex flex-col items-center relative">
@@ -96,7 +98,7 @@ const MindMapItem = ({
 
 export const MindMapWidget: React.FC = () => {
   const {
-    tasks, columns,
+    tasks, columns, // 3. Теперь данные корректно приходят из контекста
     taskModal, setTaskModal,
     deleteTaskModal, setDeleteTaskModal,
     handleSaveTask, handleDeleteTask,
@@ -167,7 +169,7 @@ export const MindMapWidget: React.FC = () => {
             initialParentId={taskModal.parentId}
             columns={columns}
             allTasks={tasks}
-            users={['Иван Иванов', 'Анна Смирнова']}
+            users={AVAILABLE_USERS}
             onSave={handleSaveTask}
             onOpenParent={(pid) => { const p = tasks.find(t => t.id === pid); if(p) openEditTaskModal(p); }}
             onAddSubtask={openSubtaskModal}

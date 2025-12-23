@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Plus, MoreVertical, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, MoreVertical, Calendar, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 import TaskModal from "./kanban/TaskModal";
 import DeleteColumnModal from "./kanban/DeleteColumnModal";
@@ -57,7 +57,6 @@ export const KanbanBoardWidget: React.FC = () => {
         </div>
       </div>
 
-      {/* Колонки */}
       <div className="kanban-columns-wrapper flex gap-6 overflow-x-auto pb-6 px-4 flex-1 items-start nodrag cursor-default">
         {columns.map((col) => {
           const colTasks = tasks.filter(t => t.status === col.id)
@@ -80,7 +79,10 @@ export const KanbanBoardWidget: React.FC = () => {
 
               <div className="kanban-task-list p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar min-h-[50px]">
                 {colTasks.map((task) => {
-                  const isExpired = task.deadline && new Date(task.deadline) < new Date() && !col.isDoneColumn;
+                  // 6. Исправленная логика Done и подсветки
+                  const isColumnDone = columns.find(c => c.id === task.status)?.isDoneColumn;
+                  const isExpired = task.deadline && new Date(task.deadline) < new Date() && !isColumnDone;
+                  
                   return (
                     <div
                       key={task.id}
@@ -106,7 +108,8 @@ export const KanbanBoardWidget: React.FC = () => {
                         )}
                       </div>
 
-                      <h4 className="text-sm font-bold text-slate-700 leading-snug mb-1 group-hover:text-indigo-700 transition-colors">
+                      {/* 8. Троеточие при переполнении */}
+                      <h4 className="text-sm font-bold text-slate-700 leading-snug mb-1 group-hover:text-indigo-700 transition-colors truncate" title={task.title}>
                         {task.title}
                       </h4>
                       
@@ -197,7 +200,7 @@ const ColumnHeader = ({ col, onRename, onDelete, onSetDone, taskCount }: any) =>
                 />
             ) : (
                 <div className="flex items-center gap-2">
-                    {col.isDoneColumn && <span className="text-emerald-500 font-bold">✓</span>}
+                    {col.isDoneColumn && <CheckCircle2 size={16} className="text-emerald-500 font-bold" />}
                     <span onDoubleClick={() => setIsEditing(true)} className="font-bold text-slate-700 text-sm uppercase tracking-wide cursor-text">
                         {col.title}
                     </span>

@@ -6,15 +6,14 @@ import { useKanbanContext } from "../context/KanbanContext";
 export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
   const { 
     kanbanTasks, mindMapTasks, columns, setColumns, 
-    updateTasks, isSynced, toggleSync, isMindMapVisible, setMindMapVisible 
+    updateTaskInStore, addTaskToStore, deleteTaskFromStore,
+    isSynced, toggleSync, isMindMapVisible, setMindMapVisible 
   } = useKanbanContext();
 
   const tasks = source === 'kanban' ? kanbanTasks : mindMapTasks;
-  const setTasks = (action: any) => updateTasks(action, source);
-
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
-  // --- MODALS STATE ---
+  // --- MODALS ---
   const [taskModal, setTaskModal] = useState<{ isOpen: boolean; editingTask: ITaskData | null; status: string; parentId?: string }>({
     isOpen: false, editingTask: null, status: "todo", parentId: undefined
   });
@@ -27,7 +26,7 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     isOpen: false, taskId: null
   });
 
-  // --- ACTIONS ---
+  // --- LOGIC ---
 
   const handleCreateColumn = useCallback(() => {
     const baseTitle = "Новая колонка";
@@ -41,6 +40,7 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
   }, [columns, setColumns]);
 
   const handleRenameColumn = useCallback((colId: string, newTitle: string) => {
+    if (!newTitle.trim()) return; // Валидация колонки
     setColumns(prev => prev.map(c => c.id === colId ? { ...c, title: newTitle } : c));
   }, [setColumns]);
 
@@ -48,37 +48,51 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     setColumns(prev => prev.map(col => ({ ...col, isDoneColumn: col.id === colId })));
   }, [setColumns]);
 
+  // 4. и 7. Валидация и создание задачи
   const handleSaveTask = useCallback((taskData: Partial<ITaskData>) => {
+    // Валидация обязательного поля
+    if (!taskData.title?.trim()) {
+      alert("Ошибка: У задачи должно быть название!");
+      return;
+    }
+
     const timestamp = Date.now();
     
-    setTasks((prev: ITaskData[]) => {
-      if (taskModal.editingTask) {
-        return prev.map(t => {
-          if (t.id === taskModal.editingTask!.id) {
-            const changes: string[] = [];
-            if (taskData.title && t.title !== taskData.title) changes.push(`Название изменено`);
-            if (taskData.status && t.status !== taskData.status) {
-                const col = columns.find(c => c.id === taskData.status);
-                changes.push(`Статус: ${col?.title || taskData.status}`);
-            }
-            if (taskData.deadline !== t.deadline) changes.push(`Дедлайн изменен`);
+    if (taskModal.editingTask) {
+        // Редактирование
+        const oldTask = taskModal.editingTask;
+        const changes: string[] = [];
+        
+        if (taskData.title && oldTask.title !== taskData.title) changes.push(`Название изменено`);
+        if (taskData.status && oldTask.status !== taskData.status) {
+            const col = columns.find(c => c.id === taskData.status);
+            changes.push(`Статус: ${col?.title || taskData.status}`);
+        }
+        if (taskData.deadline !== oldTask.deadline) changes.push(`Дедлайн изменен`);
 
-            const newHistoryItem: ITaskHistory = {
-              updatedAt: timestamp,
-              action: changes.length > 0 ? changes.join("; ") : "Обновление информации"
-            };
+        const newHistoryItem: ITaskHistory = {
+            updatedAt: timestamp,
+            action: changes.length > 0 ? changes.join("; ") : "Обновление"
+        };
 
-            const updatedHistory = changes.length > 0 ? [...(t.history || []), newHistoryItem] : (t.history || []);
-            return { ...t, ...taskData, history: updatedHistory } as ITaskData;
-          }
-          return t;
-        });
-      } else {
+        const updatedHistory = changes.length > 0 
+            ? [...(oldTask.history || []), newHistoryItem] 
+            : (oldTask.history || []);
+
+        const updatedTask: ITaskData = {
+            ...oldTask,
+            ...taskData,
+            history: updatedHistory
+        };
+
+        updateTaskInStore(updatedTask, source);
+    } else {
+        // Создание
         const newTask: ITaskData = {
           id: nanoid(),
-          title: taskData.title || "Новая задача",
+          title: taskData.title,
           description: taskData.description || "",
-          status: taskData.status || taskModal.status,
+          status: taskData.status || taskModal.status || columns[0]?.id || "todo", // Fallback на первую колонку
           priority: taskData.priority,
           deadline: taskData.deadline,
           username: taskData.username,
@@ -86,12 +100,13 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
           createdAt: timestamp,
           history: [{ updatedAt: timestamp, action: "Задача создана" }]
         };
-        return [...prev, newTask];
-      }
-    });
+        
+        addTaskToStore(newTask, source);
+    }
     setTaskModal(prev => ({ ...prev, isOpen: false }));
-  }, [taskModal, columns, setTasks]);
+  }, [taskModal, columns, updateTaskInStore, addTaskToStore, source]);
 
+  // Drag & Drop
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = 'move';
@@ -104,21 +119,21 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
   const handleDrop = (e: React.DragEvent, colId: string) => {
     e.preventDefault();
     if (draggedTaskId) {
-      setTasks((prev: ITaskData[]) => prev.map(t => {
-        if (t.id === draggedTaskId && t.status !== colId) {
-            const col = columns.find(c => c.id === colId);
-            const historyItem: ITaskHistory = {
-                updatedAt: Date.now(),
-                action: `Статус изменен на: ${col?.title || colId}`
-            };
-            return { ...t, status: colId, history: [...(t.history || []), historyItem] };
-        }
-        return t;
-      }));
+      const task = tasks.find(t => t.id === draggedTaskId);
+      if (task && task.status !== colId) {
+          const col = columns.find(c => c.id === colId);
+          const historyItem: ITaskHistory = {
+              updatedAt: Date.now(),
+              action: `Статус: ${col?.title || colId}`
+          };
+          const updatedTask = { ...task, status: colId, history: [...(task.history || []), historyItem] };
+          updateTaskInStore(updatedTask, source);
+      }
       setDraggedTaskId(null);
     }
   };
 
+  // Modals helpers
   const openNewTaskModal = useCallback((status: string) => {
     setTaskModal({ isOpen: true, editingTask: null, status, parentId: undefined });
   }, []);
@@ -138,11 +153,15 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
 
   const handleDeleteColumn = useCallback(() => {
     if (deleteColumnModal.colId) {
-      setTasks((prev: ITaskData[]) => prev.filter(t => t.status !== deleteColumnModal.colId));
+      // При удалении колонки нужно решить, что делать с задачами. 
+      // Сейчас мы их удаляем, но нужно делать это через стор
+      const tasksToDelete = tasks.filter(t => t.status === deleteColumnModal.colId);
+      tasksToDelete.forEach(t => deleteTaskFromStore(t.id, false, source)); // Удаляем задачи
+      
       setColumns(prev => prev.filter(c => c.id !== deleteColumnModal.colId));
       setDeleteColumnModal({ isOpen: false, colId: null });
     }
-  }, [deleteColumnModal.colId, setTasks, setColumns]);
+  }, [deleteColumnModal.colId, tasks, deleteTaskFromStore, source, setColumns]);
 
   const openDeleteTaskModal = useCallback((taskId: string) => {
     setDeleteTaskModal({ isOpen: true, taskId });
@@ -151,18 +170,12 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
   const handleDeleteTask = useCallback((deleteSubtasks: boolean) => {
     const taskId = deleteTaskModal.taskId;
     if (!taskId) return;
-    setTasks((prev: ITaskData[]) => {
-        let newTasks = prev.filter(t => t.id !== taskId);
-        if (deleteSubtasks) {
-            newTasks = newTasks.filter(t => t.parentId !== taskId);
-        } else {
-            newTasks = newTasks.map(t => t.parentId === taskId ? { ...t, parentId: undefined } : t);
-        }
-        return newTasks;
-    });
+    // 9. Удаление через центральный метод
+    deleteTaskFromStore(taskId, deleteSubtasks, source);
+    
     setDeleteTaskModal({ isOpen: false, taskId: null });
     setTaskModal(prev => ({ ...prev, isOpen: false }));
-  }, [deleteTaskModal.taskId, setTasks]);
+  }, [deleteTaskModal.taskId, deleteTaskFromStore, source]);
 
   return {
     columns, tasks,

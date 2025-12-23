@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* 5. Единый шрифт для всего приложения */
+:root {
+  font-family: 'Montserrat', sans-serif;
+}
+
+body, #root {
+  font-family: 'Montserrat', sans-serif;
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  overflow: hidden;
+}
+
 .kanban-widget-container {
   display: flex;
   flex-direction: column;
@@ -7,7 +20,38 @@
   width: 100%;
   padding: 16px;
   box-sizing: border-box;
-  font-family: 'Montserrat', sans-serif;
+}
+
+/* Скроллбар */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+/* 
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+} */
+
+/* Стили для React Flow (чтобы курсор вел себя ожидаемо) */
+.react-flow__pane {
+  cursor: grab;
+}
+.react-flow__pane.dragging {
+  cursor: grabbing;
 }
 
 .kanban-header {
