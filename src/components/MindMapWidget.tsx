@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import ReactDOM from "react-dom";
-import { Plus, RefreshCw, X, AlertCircle, Calendar, User } from 'lucide-react';
-import type { ITaskData } from '../types/modules';
+import { Plus, RefreshCw, X, AlertCircle, Calendar, User, CheckCircle2 } from 'lucide-react';
+import type { ITaskData, ColumnData } from '../types/modules';
 import { useKanbanBoard } from '../hooks/useKanbanBoard';
 import { AVAILABLE_USERS } from "../data/mockData";
 import TaskModal from './kanban/TaskModal';
@@ -10,24 +10,41 @@ import DeleteTaskModal from './kanban/DeleteTaskModal';
 const MindMapItem = ({ 
   task, 
   allTasks, 
+  columns,
   onEdit, 
   onAddChild 
 }: { 
   task: ITaskData, 
   allTasks: ITaskData[], 
+  columns: ColumnData[],
   onEdit: (t: ITaskData) => void,
   onAddChild: (id: string) => void
 }) => {
   const children = allTasks.filter(t => t.parentId === task.id);
-  // Проверка статуса упрощенная, но можно расширить прокинув колонки
-  const isExpired = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'done'; 
+  
+  // 1. и 2. Логика статусов (Выполнено и Просрочено)
+  const currentColumn = columns.find(c => c.id === task.status);
+  const isDone = currentColumn?.isDoneColumn;
+  const isExpired = task.deadline && new Date(task.deadline) < new Date() && !isDone;
+
+  // Стили карточки
+  let borderClass = 'border-slate-200 hover:border-indigo-400';
+  let bgClass = 'bg-white';
+  
+  if (isDone) {
+      borderClass = 'border-green-400';
+      bgClass = 'bg-green-50';
+  } else if (isExpired) {
+      borderClass = 'border-red-400';
+      bgClass = 'bg-red-50';
+  }
 
   return (
     <div className="flex flex-col items-center relative">
       <div 
         className={`
-          relative z-10 w-56 p-3 rounded-xl border-2 shadow-sm bg-white cursor-pointer hover:shadow-md transition-all
-          ${isExpired ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-indigo-400'}
+          relative z-10 w-56 p-3 rounded-xl border-2 shadow-sm cursor-pointer hover:shadow-md transition-all
+          ${bgClass} ${borderClass}
         `}
         onClick={() => onEdit(task)}
       >
@@ -38,6 +55,8 @@ const MindMapItem = ({
                     task.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'
                 }`} />
             ) : <div className="h-1.5 w-6 rounded-full bg-slate-200" />}
+            
+            {isDone && <CheckCircle2 size={14} className="text-green-600" />}
             {isExpired && <AlertCircle size={14} className="text-red-500 animate-pulse" />}
         </div>
         
@@ -47,7 +66,7 @@ const MindMapItem = ({
             {task.deadline ? (
                 <div className="flex items-center gap-1">
                     <Calendar size={10} /> 
-                    <span className={isExpired ? 'text-red-600 font-bold' : ''}>
+                    <span className={isExpired ? 'text-red-600 font-bold' : (isDone ? 'text-green-700 font-bold' : '')}>
                         {new Date(task.deadline).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
                     </span>
                 </div>
@@ -61,7 +80,7 @@ const MindMapItem = ({
             )}
         </div>
 
-        <div className="flex justify-center mt-1 pt-2 border-t border-slate-100">
+        <div className="flex justify-center mt-1 pt-2 border-t border-slate-200/50">
            <button 
              onClick={(e) => { e.stopPropagation(); onAddChild(task.id); }}
              className="w-full py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center gap-1 transition-colors text-[10px] font-bold"
@@ -84,7 +103,8 @@ const MindMapItem = ({
                    <div className="w-0.5 h-4 bg-slate-300 mb-0" />
                    <MindMapItem 
                      task={child} 
-                     allTasks={allTasks} 
+                     allTasks={allTasks}
+                     columns={columns} // Прокидываем колонки дальше
                      onEdit={onEdit}
                      onAddChild={onAddChild}
                    />
@@ -98,7 +118,7 @@ const MindMapItem = ({
 
 export const MindMapWidget: React.FC = () => {
   const {
-    tasks, columns, // 3. Теперь данные корректно приходят из контекста
+    tasks, columns,
     taskModal, setTaskModal,
     deleteTaskModal, setDeleteTaskModal,
     handleSaveTask, handleDeleteTask,
@@ -143,7 +163,8 @@ export const MindMapWidget: React.FC = () => {
                 <MindMapItem 
                     key={root.id} 
                     task={root} 
-                    allTasks={tasks} 
+                    allTasks={tasks}
+                    columns={columns} // Передаем колонки
                     onEdit={openEditTaskModal}
                     onAddChild={openSubtaskModal}
                 />
@@ -169,7 +190,7 @@ export const MindMapWidget: React.FC = () => {
             initialParentId={taskModal.parentId}
             columns={columns}
             allTasks={tasks}
-            users={AVAILABLE_USERS}
+            users={AVAILABLE_USERS} // Используем общие моковые данные
             onSave={handleSaveTask}
             onOpenParent={(pid) => { const p = tasks.find(t => t.id === pid); if(p) openEditTaskModal(p); }}
             onAddSubtask={openSubtaskModal}

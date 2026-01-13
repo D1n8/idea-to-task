@@ -1,6 +1,7 @@
 export interface ITaskHistory {
   updatedAt: number;
   action: string;
+  changedBy: string;
 }
 
 export interface ITaskData {

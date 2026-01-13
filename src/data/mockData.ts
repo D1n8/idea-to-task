@@ -18,7 +18,6 @@ export const initialColumns: ColumnData[] = [
 const now = Date.now();
 const dayInMs = 24 * 60 * 60 * 1000;
 
-// Функция для генерации даты в формате YYYY-MM-DD
 const getDateOffset = (days: number) => {
   const date = new Date(now + days * dayInMs);
   return date.toISOString().split('T')[0];
@@ -34,7 +33,7 @@ export const sampleTasks: ITaskData[] = [
     username: "Анна Смирнова",
     deadline: getDateOffset(2),
     createdAt: now - dayInMs * 3,
-    history: [{ updatedAt: now - dayInMs * 3, action: "Задача создана" }]
+    history: [{ updatedAt: now - dayInMs * 3, action: "Задача создана", changedBy: "System" }]
   },
   {
     id: "2",
@@ -45,7 +44,7 @@ export const sampleTasks: ITaskData[] = [
     username: "Иван Иванов",
     deadline: getDateOffset(-1), // Просрочено
     createdAt: now - dayInMs * 5,
-    history: [{ updatedAt: now - dayInMs * 5, action: "Задача создана" }]
+    history: [{ updatedAt: now - dayInMs * 5, action: "Задача создана", changedBy: "System" }]
   },
   {
     id: "3",
@@ -56,16 +55,16 @@ export const sampleTasks: ITaskData[] = [
     username: "",
     deadline: getDateOffset(5),
     createdAt: now - dayInMs * 2,
-    history: [{ updatedAt: now - dayInMs * 2, action: "Задача создана" }]
+    history: [{ updatedAt: now - dayInMs * 2, action: "Задача создана", changedBy: "System" }]
   },
   {
     id: "6",
     title: "Собрать требования",
     status: "done",
     priority: "medium",
-    parentId: "1", // Подзадача
+    parentId: "1",
     username: "Анна Смирнова",
     createdAt: now - dayInMs * 12,
-    history: [{ updatedAt: now - dayInMs * 12, action: "Задача создана" }]
+    history: [{ updatedAt: now - dayInMs * 12, action: "Задача создана", changedBy: "System" }]
   }
 ];
