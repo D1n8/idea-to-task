@@ -1,79 +1,104 @@
-import React, { useEffect } from 'react';
-import ReactFlow, { Background, type Node, type NodeTypes, useNodesState, useEdgesState } from 'reactflow';
-import 'reactflow/dist/style.css';
-import './App.css';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Resizable } from 're-resizable';
+import { Handle, Position } from 'reactflow';
 
-import { KanbanNode } from './components/KanbanNode';
-import { MindMapNode } from './components/MindMapNode';
 import { KanbanProvider, useKanbanContext } from './context/KanbanContext';
+import { KanbanBoardWidget } from './components/KanbanBoardWidget';
+import { MindMapWidget } from './components/MindMapWidget';
 
-const nodeTypes: NodeTypes = {
-  kanbanBoard: KanbanNode,
-  mindMap: MindMapNode,
-};
-
-const FlowBoard = () => {
-  const { isMindMapVisible } = useKanbanContext();
+const InnerContent = () => {
+  // @ts-ignore
+  const { isMindMapVisible, measures, setMeasures, isConnectable } = useKanbanContext();
   
-  const initialNodes: Node[] = [
-    {
-      id: 'board-1',
-      type: 'kanbanBoard',
-      position: { x: 100, y: 100 },
-      data: { label: 'Kanban Board' },
-      dragHandle: '.kanban-header' // Заголовок Канбана
-    },
-  ];
+  const [leftWidth, setLeftWidth] = useState(50);
+  const [isResizingSplitter, setIsResizingSplitter] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const startSplitterResize = () => setIsResizingSplitter(true);
+  const stopSplitterResize = () => setIsResizingSplitter(false);
+  
+  const onSplitterResize = useCallback((e: MouseEvent) => {
+    if (isResizingSplitter && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      if (newWidth > 20 && newWidth < 80) setLeftWidth(newWidth);
+    }
+  }, [isResizingSplitter]);
 
   useEffect(() => {
-    setNodes((nds) => {
-      const exists = nds.find(n => n.id === 'mindmap-1');
-      
-      if (isMindMapVisible && !exists) {
-        return [...nds, {
-          id: 'mindmap-1',
-          type: 'mindMap',
-          position: { x: 1000, y: 100 },
-          data: { label: 'Mind Map' },
-          dragHandle: '.p-4' // Заголовок MindMap (класс .p-4)
-        }];
-      } 
-      
-      if (!isMindMapVisible && exists) {
-        return nds.filter(n => n.id !== 'mindmap-1');
-      }
-
-      return nds;
-    });
-  }, [isMindMapVisible, setNodes]);
+    if (isResizingSplitter) {
+      window.addEventListener('mousemove', onSplitterResize);
+      window.addEventListener('mouseup', stopSplitterResize);
+    } else {
+      window.removeEventListener('mousemove', onSplitterResize);
+      window.removeEventListener('mouseup', stopSplitterResize);
+    }
+    return () => {
+        window.removeEventListener('mousemove', onSplitterResize);
+        window.removeEventListener('mouseup', stopSplitterResize);
+    };
+  }, [isResizingSplitter, onSplitterResize]);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#eef2f6' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        fitView
-        minZoom={0.1}
-        maxZoom={4}
-      >
-        <Background gap={20} color="#cbd5e1" />
-      </ReactFlow>
-    </div>
+    <Resizable
+      size={{ width: measures.width, height: measures.height }}
+      onResizeStop={(_e, _direction, _ref, d) => {
+        setMeasures({
+          width: measures.width + d.width,
+          height: measures.height + d.height,
+        });
+      }}
+      minWidth={600}
+      minHeight={400}
+      enable={{ right: true, bottom: true, bottomRight: true }}
+
+      handleClasses={{ right: 'nodrag', bottom: 'nodrag', bottomRight: 'nodrag' }}
+      className="bg-white rounded-xl shadow-2xl border border-gray-300 overflow-hidden flex flex-col relative"
+    >
+      <Handle type="target" position={Position.Top} isConnectable={isConnectable} />
+
+      <div ref={containerRef} className="flex h-full w-full overflow-hidden relative nowheel cursor-auto">
+        
+        <div 
+          className="h-full transition-all duration-75 ease-out border-r border-gray-200"
+          style={{ width: isMindMapVisible ? `${leftWidth}%` : '100%' }}
+        >
+          <KanbanBoardWidget />
+        </div>
+
+        {isMindMapVisible && (
+          <div
+            onMouseDown={startSplitterResize}
+            className="w-1.5 h-full cursor-col-resize hover:bg-blue-500 bg-gray-100 transition-colors z-50 flex-shrink-0 nodrag active:bg-blue-600"
+            style={{ marginLeft: '-3px', marginRight: '-3px', position: 'relative' }}
+          />
+        )}
+
+        {isMindMapVisible && (
+          <div className="h-full bg-slate-50" style={{ width: `${100 - leftWidth}%` }}>
+            <MindMapWidget />
+          </div>
+        )}
+      </div>
+
+      <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} />
+    </Resizable>
   );
 };
 
-function App() {
+export const App = ({ initialData, isConnectable }: { initialData?: any, isConnectable?: boolean }) => {
   return (
-    <KanbanProvider>
-      <FlowBoard />
+    <KanbanProvider initialData={initialData}>
+      <InnerContentWithProps isConnectable={isConnectable} />
     </KanbanProvider>
   );
+};
+
+const InnerContentWithProps = ({ isConnectable }: { isConnectable?: boolean }) => {
+    const ctx = useKanbanContext();
+    // @ts-ignore
+    ctx.isConnectable = isConnectable; 
+    return <InnerContent />;
 }
 
 export default App;

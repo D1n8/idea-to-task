@@ -25,3 +25,24 @@ export interface ColumnData {
   width: number;
   isDoneColumn?: boolean;
 }
+
+export interface IHostInfo {
+  widgetId: number;
+  userId: number;
+  role: string;
+  config: {
+    tasks?: ITaskData[];
+    columns?: ColumnData[];
+    // Размеры виджета
+    measures?: {
+      width: number;
+      height: number;
+    };
+    [key: string]: any;
+  };
+  board: {
+    id: number;
+    name: string;
+    parentId: number;
+  };
+}

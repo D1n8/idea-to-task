@@ -4,8 +4,8 @@ import { Plus, RefreshCw, X, AlertCircle, Calendar, User, CheckCircle2 } from 'l
 import type { ITaskData, ColumnData } from '../types/modules';
 import { useKanbanBoard } from '../hooks/useKanbanBoard';
 import { AVAILABLE_USERS } from "../data/mockData";
-import TaskModal from './kanban/TaskModal';
-import DeleteTaskModal from './kanban/DeleteTaskModal';
+import TaskModal from './modals/TaskModal';
+import DeleteTaskModal from './modals/DeleteTaskModal';
 
 const MindMapItem = ({ 
   task, 
@@ -104,7 +104,7 @@ const MindMapItem = ({
                    <MindMapItem 
                      task={child} 
                      allTasks={allTasks}
-                     columns={columns} // Прокидываем колонки дальше
+                     columns={columns}
                      onEdit={onEdit}
                      onAddChild={onAddChild}
                    />
@@ -164,7 +164,7 @@ export const MindMapWidget: React.FC = () => {
                     key={root.id} 
                     task={root} 
                     allTasks={tasks}
-                    columns={columns} // Передаем колонки
+                    columns={columns}
                     onEdit={openEditTaskModal}
                     onAddChild={openSubtaskModal}
                 />

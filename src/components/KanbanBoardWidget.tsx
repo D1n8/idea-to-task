@@ -1,22 +1,24 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Plus, MoreVertical, Calendar, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Plus, GitFork, MoreVertical, Calendar, AlertCircle, CheckCircle2, Layout } from 'lucide-react';
 
-import TaskModal from "./kanban/TaskModal";
-import DeleteColumnModal from "./kanban/DeleteColumnModal";
-import DeleteTaskModal from "./kanban/DeleteTaskModal"; 
+import TaskModal from "./modals/TaskModal";
+import DeleteColumnModal from "./modals/DeleteColumnModal";
+import DeleteTaskModal from "./modals/DeleteTaskModal"; 
 import { useKanbanBoard } from "../hooks/useKanbanBoard";
 import { AVAILABLE_USERS } from "../data/mockData";
 import { getPriorityWeight } from "../utils/kanbanUtils";
+import { useKanbanContext } from "../context/KanbanContext";
 
 export const KanbanBoardWidget: React.FC = () => {
+  const { isMindMapVisible, setMindMapVisible } = useKanbanContext();
+  
   const {
     columns, tasks, taskModal, setTaskModal, deleteColumnModal, setDeleteColumnModal,
     deleteTaskModal, setDeleteTaskModal, handleDeleteTask, openDeleteTaskModal,
     handleSaveTask, handleDeleteColumn, openSubtaskModal, openEditTaskModal,
     handleCreateColumn, handleRenameColumn, confirmDeleteColumn, handleSetDoneColumn,
-    openNewTaskModal, handleDragStart, handleDragOver, handleDrop,
-    isSynced, toggleSync
+    openNewTaskModal, handleDragStart, handleDragOver, handleDrop
   } = useKanbanBoard('kanban');
 
   const tasksInColumnToDelete = deleteColumnModal.colId 
@@ -36,16 +38,15 @@ export const KanbanBoardWidget: React.FC = () => {
         
         <div className="flex gap-3 nodrag">
             <button 
-                onClick={toggleSync}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-all border ${
-                    isSynced 
-                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
-                }`}
-                title={isSynced ? "Отключить синхронизацию" : "Включить синхронизацию с Mind Map"}
+                onClick={() => setMindMapVisible(!isMindMapVisible)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold border transition-all
+                  ${isMindMapVisible 
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
+                    : 'bg-white text-slate-500 border-slate-200 hover:text-indigo-600'
+                  }`}
             >
-                <RefreshCw size={16} className={isSynced ? "animate-spin-slow" : ""} />
-                {isSynced ? "Synced" : "Sync"}
+                {isMindMapVisible ? <Layout size={16}/> : <GitFork size={16} />}
+                <span>{isMindMapVisible ? 'Скрыть Mind Map' : 'Mind Map'}</span>
             </button>
 
             <button 

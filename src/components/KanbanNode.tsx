@@ -2,7 +2,7 @@ import React from 'react';
 import type { NodeProps } from 'reactflow';
 import { KanbanBoardWidget } from './KanbanBoardWidget';
 
-export const KanbanNode: React.FC<NodeProps> = ({ data }) => {
+export const KanbanNode: React.FC<NodeProps> = () => {
   return (
     <div 
         style={{ 

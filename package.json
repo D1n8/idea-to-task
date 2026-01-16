@@ -3,6 +3,20 @@
   "private": false,
   "version": "0.1.0",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/idea-to-task.umd.js",
+  "module": "./dist/idea-to-task.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/idea-to-task.es.js",
+      "require": "./dist/idea-to-task.umd.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./style.css": "./dist/style.css"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -10,15 +24,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
     "lucide-react": "^0.562.0",
     "nanoid": "^5.1.6",
-    "re-resizable": "^6.11.2",
-    "reactflow": "^11.11.4"
+    "re-resizable": "^6.11.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
@@ -32,22 +45,12 @@
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.3",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "vite-plugin-dts": "^4.5.4"
   },
   "peerDependencies": {
-    "@xyflow/react": "^12.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "main": "./dist/idea-to-task.umd.js",
-  "module": "./dist/idea-to-task.es.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/idea-to-task.es.js",
-      "require": "./dist/idea-to-task.umd.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./styles.css": "./dist/style.css"
+    "react-dom": "^19.0.0",
+    "reactflow": "^11.11.4"
   }
 }

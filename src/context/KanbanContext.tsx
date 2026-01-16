@@ -1,107 +1,180 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, type ReactNode, useEffect, useRef } from "react";
 import type { ITaskData, ColumnData } from "../types/modules";
-import { initialColumns, sampleTasks } from "../data/mockData";
+import { widgetEventBus, WidgetUpdateEvent } from "../utils/eventBus";
+
+const API_BASE_URL = "http://85.234.22.160:1111";
 
 interface KanbanContextType {
   kanbanTasks: ITaskData[];
   setKanbanTasks: React.Dispatch<React.SetStateAction<ITaskData[]>>;
-  mindMapTasks: ITaskData[];
-  setMindMapTasks: React.Dispatch<React.SetStateAction<ITaskData[]>>;
   columns: ColumnData[];
   setColumns: React.Dispatch<React.SetStateAction<ColumnData[]>>;
+  
+  measures: { width: number; height: number };
+  setMeasures: React.Dispatch<React.SetStateAction<{ width: number; height: number }>>;
+
+  isLoading: boolean;
+  saveError: string | null;
+  widgetId: string | null;
+  userId: number | null;
+  role: string | null;
   
   isSynced: boolean;
   toggleSync: () => void;
   isMindMapVisible: boolean;
   setMindMapVisible: (v: boolean) => void;
-  
-  // Универсальные методы изменения данных
-  updateTaskInStore: (task: ITaskData, source: 'kanban' | 'mindmap') => void;
+
+  saveAllData: () => Promise<void>;
   addTaskToStore: (task: ITaskData, source: 'kanban' | 'mindmap') => void;
+  updateTaskInStore: (task: ITaskData, source: 'kanban' | 'mindmap') => void;
   deleteTaskFromStore: (taskId: string, deleteSubtasks: boolean, source: 'kanban' | 'mindmap') => void;
+  
+  mindMapTasks: ITaskData[];
+  setMindMapTasks: React.Dispatch<React.SetStateAction<ITaskData[]>>;
 }
 
 const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
 
-export const KanbanProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // 3. Общие моковые данные при инициализации
-  const [kanbanTasks, setKanbanTasks] = useState<ITaskData[]>(sampleTasks);
-  const [mindMapTasks, setMindMapTasks] = useState<ITaskData[]>([]); // Изначально пустой
-  const [columns, setColumns] = useState<ColumnData[]>(initialColumns);
-  
-  const [isSynced, setIsSynced] = useState(false);
+export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }> = ({ children, initialData }) => {
+  const [widgetId, setWidgetId] = useState<string | null>(initialData?.widgetId ? String(initialData.widgetId) : null);
+  const [userId, setUserId] = useState<number | null>(initialData?.userId || null);
+  const [role, setRole] = useState<string | null>(initialData?.role || null);
+
+  const [kanbanTasks, setKanbanTasks] = useState<ITaskData[]>(initialData?.config?.tasks || []);
+  const [mindMapTasks, setMindMapTasks] = useState<ITaskData[]>(initialData?.config?.tasks || []);
+  const [columns, setColumns] = useState<ColumnData[]>(initialData?.config?.columns || [
+    { id: "todo", title: "К выполнению", x: 0, y: 0, width: 300 }
+  ]);
+
+  // --- РАЗМЕРЫ (MEASURES) ---
+  const [measures, setMeasures] = useState<{ width: number; height: number }>({
+    width: initialData?.config?.measures?.width || 1000,
+    height: initialData?.config?.measures?.height || 600,
+  });
+
+  const [isSynced, setIsSynced] = useState(true);
   const [isMindMapVisible, setMindMapVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // 2. Исправленная логика переключения синхронизации
-  const toggleSync = useCallback(() => {
-    setIsSynced(prev => {
-      const nextState = !prev;
-      if (nextState) {
-        // ВКЛЮЧЕНИЕ: Mind Map полностью копирует состояние Канбана (Master -> Slave)
-        // Это решает проблему "задача создалась на канбан, но не в mind map"
-        setMindMapTasks([...kanbanTasks]);
-        setMindMapVisible(true);
-      } else {
-        // ВЫКЛЮЧЕНИЕ: Они продолжают жить с текущими данными, но раздельно
+  const widgetIdRef = useRef(widgetId);
+  useEffect(() => { widgetIdRef.current = widgetId; }, [widgetId]);
+
+  // --- СЛУШАЕМ СОБЫТИЯ ЧЕРЕЗ EVENT BUS ---
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const event = e as WidgetUpdateEvent;
+      const data = event.detail;
+      
+      const incomingId = String(data.widgetId);
+      const currentId = widgetIdRef.current;
+
+      // Проверка: Обновляем только если ID совпадает или это первая инициализация
+      if (!currentId || currentId === incomingId) {
+          setWidgetId(incomingId);
+          setUserId(data.userId);
+          setRole(data.role);
+
+          if (data.config) {
+            if (data.config.tasks) {
+                setKanbanTasks(data.config.tasks);
+                setMindMapTasks(data.config.tasks);
+            }
+            if (data.config.columns) setColumns(data.config.columns);
+            // Обновляем размеры, если пришли с бэка
+            if (data.config.measures) setMeasures(data.config.measures);
+          }
       }
-      return nextState;
-    });
-  }, [kanbanTasks]);
+    };
 
-  // Хелпер для обновления списков
-  const updateList = (list: ITaskData[], newTask: ITaskData) => {
-    return list.map(t => t.id === newTask.id ? newTask : t);
+    // Подписываемся
+    widgetEventBus.addEventListener('widget-update', handleUpdate);
+    
+    return () => {
+       // Отписываемся
+       widgetEventBus.removeEventListener('widget-update', handleUpdate);
+    };
+  }, []);
+
+  // Helpers... (getSetters, addTaskToStore и т.д. без изменений)
+  const getSetters = (source: 'kanban' | 'mindmap') => {
+    if (isSynced) return [setKanbanTasks, setMindMapTasks];
+    return source === 'kanban' ? [setKanbanTasks] : [setMindMapTasks];
   };
 
-  const updateTaskInStore = useCallback((updatedTask: ITaskData, source: 'kanban' | 'mindmap') => {
-    if (isSynced) {
-      // 9. Синхронное обновление предотвращает рассинхрон
-      setKanbanTasks(prev => updateList(prev, updatedTask));
-      setMindMapTasks(prev => updateList(prev, updatedTask));
-    } else {
-      if (source === 'kanban') setKanbanTasks(prev => updateList(prev, updatedTask));
-      else setMindMapTasks(prev => updateList(prev, updatedTask));
-    }
+  const addTaskToStore = useCallback((task: ITaskData, source: 'kanban' | 'mindmap') => {
+    const setters = getSetters(source);
+    setters.forEach(setter => setter(prev => [...prev, task]));
   }, [isSynced]);
 
-  const addTaskToStore = useCallback((newTask: ITaskData, source: 'kanban' | 'mindmap') => {
-    if (isSynced) {
-      setKanbanTasks(prev => [...prev, newTask]);
-      setMindMapTasks(prev => [...prev, newTask]);
-    } else {
-      if (source === 'kanban') setKanbanTasks(prev => [...prev, newTask]);
-      else setMindMapTasks(prev => [...prev, newTask]);
-    }
+  const updateTaskInStore = useCallback((updatedTask: ITaskData, source: 'kanban' | 'mindmap') => {
+    const setters = getSetters(source);
+    setters.forEach(setter => setter(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t)));
   }, [isSynced]);
 
   const deleteTaskFromStore = useCallback((taskId: string, deleteSubtasks: boolean, source: 'kanban' | 'mindmap') => {
-    const filterFn = (list: ITaskData[]) => {
-      let newList = list.filter(t => t.id !== taskId);
-      if (deleteSubtasks) {
-        newList = newList.filter(t => t.parentId !== taskId);
-      } else {
-        newList = newList.map(t => t.parentId === taskId ? { ...t, parentId: undefined } : t);
-      }
-      return newList;
+    const setters = getSetters(source);
+    setters.forEach(setter => setter(prev => {
+      if (deleteSubtasks) return prev.filter(t => t.id !== taskId && t.parentId !== taskId);
+      return prev.map(t => t.parentId === taskId ? { ...t, parentId: undefined } : t).filter(t => t.id !== taskId);
+    }));
+  }, [isSynced]);
+
+  const toggleSync = useCallback(() => {
+    setIsSynced(prev => {
+      const next = !prev;
+      if (next) setMindMapTasks([...kanbanTasks]);
+      return next;
+    });
+  }, [kanbanTasks]);
+
+  // --- СОХРАНЕНИЕ ---
+  const saveAllData = useCallback(async () => {
+    if (!widgetId) {
+        setSaveError("ID виджета не найден");
+        return;
+    }
+    
+    setIsLoading(true);
+    setSaveError(null);
+
+    const configPayload = {
+      tasks: kanbanTasks,
+      columns: columns,
+      measures: measures, 
+      updatedAt: new Date().toISOString()
     };
 
-    if (isSynced) {
-      setKanbanTasks(prev => filterFn(prev));
-      setMindMapTasks(prev => filterFn(prev));
-    } else {
-      if (source === 'kanban') setKanbanTasks(prev => filterFn(prev));
-      else setMindMapTasks(prev => filterFn(prev));
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/widget/${widgetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: configPayload })
+      });
+      console.log(configPayload)
+      console.log(response)
+
+
+      if (!response.ok) throw new Error(`Status: ${response.status}`);
+    } catch (e: any) {
+      console.error(e);
+      setSaveError(e.message || "Ошибка сети");
+    } finally {
+      setIsLoading(false);
     }
-  }, [isSynced]);
+  }, [widgetId, kanbanTasks, columns, measures]);
 
   return (
     <KanbanContext.Provider value={{
       kanbanTasks, setKanbanTasks,
       mindMapTasks, setMindMapTasks,
       columns, setColumns,
-      isSynced, toggleSync,
+      measures, setMeasures, 
+      isLoading, saveError, widgetId, userId, role,
+      saveAllData,
       isMindMapVisible, setMindMapVisible,
-      updateTaskInStore, addTaskToStore, deleteTaskFromStore
+      isSynced, toggleSync,
+      addTaskToStore, updateTaskInStore, deleteTaskFromStore
     }}>
       {children}
     </KanbanContext.Provider>
@@ -111,6 +184,6 @@ export const KanbanProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useKanbanContext = () => {
   const context = useContext(KanbanContext);
-  if (!context) throw new Error("useKanbanContext must be used within a KanbanProvider");
+  if (!context) throw new Error("useKanbanContext error");
   return context;
 };

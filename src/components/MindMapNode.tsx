@@ -2,7 +2,7 @@ import React from 'react';
 import type { NodeProps } from 'reactflow';
 import { MindMapWidget } from './MindMapWidget';
 
-export const MindMapNode: React.FC<NodeProps> = ({ data }) => {
+export const MindMapNode: React.FC<NodeProps> = () => {
   return (
     <div 
         style={{ 
