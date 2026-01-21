@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+## Установка 
+npm install idea-to-task-module
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Пример использования
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+import React, { useMemo } from 'react';
+import ReactFlow, { 
+  Background, 
+  Controls, 
+  MiniMap, 
+  useNodesState,
+  type NodeTypes 
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+// Импорт виджета и функции обновления из пакета
+import { IdeaToTaskWidget, getInfo } from 'idea-to-task-module';
+import 'idea-to-task-module/style.css';
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+// ID тестового виджета
+const TEST_WIDGET_ID = 555;
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
+const INITIAL_DATA = {
+  widgetId: TEST_WIDGET_ID,
+  userId: 1,
+  role: 'admin',
+  config: {
+    tasks: [],
+    columns: [{ id: "todo", title: "Start Column", x: 0, y: 0, width: 300 }],
+    measures: { width: 800, height: 500 }
+  }
+};
+
+export default function App() {
+  const nodeTypes = useMemo<NodeTypes>(() => ({
+    'idea-widget': IdeaToTaskWidget,
+  }), []);
+
+  const [nodes, , onNodesChange] = useNodesState([
+    {
+      id: 'node-1',
+      type: 'idea-widget',
+      position: { x: 100, y: 100 },
+      data: { ...INITIAL_DATA }, 
     },
-  },
-])
+  ]);
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div className="flex-1 bg-slate-100">
+        <ReactFlow
+          nodes={nodes}
+          onNodesChange={onNodesChange}
+          nodeTypes={nodeTypes}
+          fitView
+        >
+          <Background gap={20} />
+          <Controls />
+          <MiniMap />
+        </ReactFlow>
+      </div>
+    </div>
+  );
+}
 ```
