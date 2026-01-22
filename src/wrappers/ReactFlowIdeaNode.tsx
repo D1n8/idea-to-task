@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type NodeProps } from '@xyflow/react';
 import { App } from '../App';
 
 export const ReactFlowIdeaNode = memo(({ id, data, isConnectable }: NodeProps) => {

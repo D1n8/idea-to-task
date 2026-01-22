@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NodeProps } from 'reactflow';
+import type { NodeProps } from '@xyflow/react';
 import { KanbanBoardWidget } from './KanbanBoardWidget';
 
 export const KanbanNode: React.FC<NodeProps> = () => {

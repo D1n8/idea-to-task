@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Resizable } from 're-resizable';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position } from '@xyflow/react';
 
 import { KanbanProvider, useKanbanContext } from './context/KanbanContext';
 import { KanbanBoardWidget } from './components/KanbanBoardWidget';

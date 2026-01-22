@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NodeProps } from 'reactflow';
+import type { NodeProps } from '@xyflow/react';
 import { MindMapWidget } from './MindMapWidget';
 
 export const MindMapNode: React.FC<NodeProps> = () => {

@@ -33,14 +33,14 @@ export default defineConfig({
       external: [
         'react',
         'react-dom',
-        'reactflow', 
-        'react/jsx-runtime'
+        'react/jsx-runtime',
+        '@xyflow/react' 
       ],
       output: {
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
-          reactflow: 'ReactFlow',
+          '@xyflow/react': 'ReactFlow',
         },
         assetFileNames: (assetInfo) => {
           if (assetInfo.name && assetInfo.name.endsWith('.css')) {
