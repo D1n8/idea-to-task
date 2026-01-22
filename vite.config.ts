@@ -1,4 +1,3 @@
-// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -14,15 +13,15 @@ export default defineConfig({
     react(),
     tailwindcss(),
     dts({ 
-      insertTypesEntry: true,
+      tsconfigPath: './tsconfig.app.json',
+      rollupTypes: true,
       include: ['src'],
-      exclude: ['src/**/*.test.tsx', 'src/**/*.stories.tsx'] 
+      insertTypesEntry: true 
     })
   ],
   build: {
     sourcemap: true,
     emptyOutDir: true,
-    // Принудительно разделяем CSS (иногда помогает избежать инлайна)
     cssCodeSplit: true, 
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'),
@@ -43,9 +42,7 @@ export default defineConfig({
           'react-dom': 'ReactDOM',
           reactflow: 'ReactFlow',
         },
-        // ИСПРАВЛЕННАЯ ЛОГИКА ИМЕН:
         assetFileNames: (assetInfo) => {
-          // Если файл заканчивается на .css, называем его style.css
           if (assetInfo.name && assetInfo.name.endsWith('.css')) {
             return 'style.css';
           }
