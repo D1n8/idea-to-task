@@ -3,20 +3,20 @@ import { nanoid } from "nanoid";
 import type { ITaskData, ColumnData, ITaskHistory } from "../types/modules";
 import { useKanbanContext } from "../context/KanbanContext";
 
-// Имитация текущего пользователя (в реальном приложении берется из AuthContext)
-const CURRENT_USER = "Текущий Пользователь"; 
+const CURRENT_USER = "Текущий Пользователь"; // В будущем можно брать из userId
 
 export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
   const { 
     kanbanTasks, mindMapTasks, columns, setColumns, 
     updateTaskInStore, addTaskToStore, deleteTaskFromStore,
-    isSynced, toggleSync, isMindMapVisible, setMindMapVisible 
+    isSynced, toggleSync, isMindMapVisible, setMindMapVisible,
+    users, addUser
   } = useKanbanContext();
 
   const tasks = source === 'kanban' ? kanbanTasks : mindMapTasks;
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
-  // --- MODALS ---
+  // --- MODALS STATES ---
   const [taskModal, setTaskModal] = useState<{ isOpen: boolean; editingTask: ITaskData | null; status: string; parentId?: string }>({
     isOpen: false, editingTask: null, status: "todo", parentId: undefined
   });
@@ -51,49 +51,29 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
     setColumns(prev => prev.map(col => ({ ...col, isDoneColumn: col.id === colId })));
   }, [setColumns]);
 
-  // 3. и 4. Улучшенная история изменений
   const handleSaveTask = useCallback((taskData: Partial<ITaskData>) => {
     if (!taskData.title?.trim()) {
       alert("Ошибка: У задачи должно быть название!");
       return;
     }
 
+    // --- ЛОГИКА ДОБАВЛЕНИЯ НОВОГО ПОЛЬЗОВАТЕЛЯ ---
+    if (taskData.username && !users.includes(taskData.username)) {
+        addUser(taskData.username);
+    }
+
     const timestamp = Date.now();
     
     if (taskModal.editingTask) {
-        // Редактирование
         const oldTask = taskModal.editingTask;
         const changes: string[] = [];
         
-        if (taskData.title && oldTask.title !== taskData.title) {
-            changes.push(`Название: "${oldTask.title}" -> "${taskData.title}"`);
-        }
-        
-        if (taskData.status && oldTask.status !== taskData.status) {
-            const oldCol = columns.find(c => c.id === oldTask.status)?.title || oldTask.status;
-            const newCol = columns.find(c => c.id === taskData.status)?.title || taskData.status;
-            changes.push(`Статус: "${oldCol}" -> "${newCol}"`);
-        }
-        
-        if (taskData.deadline !== oldTask.deadline) {
-            const oldDate = oldTask.deadline ? new Date(oldTask.deadline).toLocaleDateString() : 'нет';
-            const newDate = taskData.deadline ? new Date(taskData.deadline).toLocaleDateString() : 'нет';
-            changes.push(`Дедлайн: ${oldDate} -> ${newDate}`);
-        }
+        if (taskData.title && oldTask.title !== taskData.title) changes.push(`Название изм.`);
+        if (taskData.status && oldTask.status !== taskData.status) changes.push(`Статус изм.`);
+        if (taskData.deadline !== oldTask.deadline) changes.push(`Дедлайн изм.`);
+        if (taskData.priority !== oldTask.priority) changes.push(`Приоритет изм.`);
+        if (taskData.username !== oldTask.username) changes.push(`Исполнитель: ${oldTask.username || '-'} -> ${taskData.username || '-'}`);
 
-        if (taskData.priority !== oldTask.priority) {
-             const oldP = oldTask.priority || 'нет';
-             const newP = taskData.priority || 'нет';
-             changes.push(`Приоритет: ${oldP} -> ${newP}`);
-        }
-
-        if (taskData.username !== oldTask.username) {
-             const oldU = oldTask.username || 'не назначен';
-             const newU = taskData.username || 'не назначен';
-             changes.push(`Исполнитель: ${oldU} -> ${newU}`);
-        }
-
-        // Если были изменения, добавляем запись
         const updatedHistory = [...(oldTask.history || [])];
         if (changes.length > 0) {
             updatedHistory.push({
@@ -114,7 +94,7 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
         // Создание
         const newTask: ITaskData = {
           id: nanoid(),
-          title: taskData.title,
+          title: taskData.title!, // TS знает, что title есть из проверки выше
           description: taskData.description || "",
           status: taskData.status || taskModal.status || columns[0]?.id || "todo",
           priority: taskData.priority,
@@ -132,7 +112,7 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
         addTaskToStore(newTask, source);
     }
     setTaskModal(prev => ({ ...prev, isOpen: false }));
-  }, [taskModal, columns, updateTaskInStore, addTaskToStore, source]);
+  }, [taskModal, columns, updateTaskInStore, addTaskToStore, source, users, addUser]);
 
   // Drag & Drop
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
@@ -154,7 +134,7 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
           
           const historyItem: ITaskHistory = {
               updatedAt: Date.now(),
-              action: `Статус (Drag&Drop): "${oldCol}" -> "${newCol}"`,
+              action: `Статус: "${oldCol}" -> "${newCol}"`,
               changedBy: CURRENT_USER
           };
           const updatedTask = { ...task, status: colId, history: [...(task.history || []), historyItem] };
@@ -204,7 +184,7 @@ export const useKanbanBoard = (source: 'kanban' | 'mindmap' = 'kanban') => {
   }, [deleteTaskModal.taskId, deleteTaskFromStore, source]);
 
   return {
-    columns, tasks,
+    columns, tasks, users, // Экспортируем users
     taskModal, setTaskModal,
     deleteColumnModal, setDeleteColumnModal,
     deleteTaskModal, setDeleteTaskModal,

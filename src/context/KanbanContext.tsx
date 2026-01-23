@@ -10,6 +10,11 @@ interface KanbanContextType {
   columns: ColumnData[];
   setColumns: React.Dispatch<React.SetStateAction<ColumnData[]>>;
   
+  // Добавляем работу с пользователями
+  users: string[];
+  setUsers: React.Dispatch<React.SetStateAction<string[]>>;
+  addUser: (name: string) => void;
+
   measures: { width: number; height: number };
   setMeasures: React.Dispatch<React.SetStateAction<{ width: number; height: number }>>;
 
@@ -49,6 +54,10 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
     { id: "todo", title: "К выполнению", x: 0, y: 0, width: 300 }
   ]);
 
+  // --- ПОЛЬЗОВАТЕЛИ ---
+  // Берем из конфига или пустой массив. Дефолтных пользователей больше нет.
+  const [users, setUsers] = useState<string[]>(initialData?.config?.users || []);
+
   const [measures, setMeasures] = useState<{ width: number; height: number }>({
     width: initialData?.config?.measures?.width || 1000,
     height: initialData?.config?.measures?.height || 600,
@@ -62,12 +71,19 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
   const widgetIdRef = useRef(widgetId);
   useEffect(() => { widgetIdRef.current = widgetId; }, [widgetId]);
 
-  // --- СЛУШАЕМ СОБЫТИЯ ЧЕРЕЗ EVENT BUS ---
+  // Хелпер для добавления пользователя (если такого еще нет)
+  const addUser = useCallback((name: string) => {
+    setUsers(prev => {
+        if (prev.includes(name)) return prev;
+        return [...prev, name];
+    });
+  }, []);
+
+  // --- СЛУШАЕМ СОБЫТИЯ ---
   useEffect(() => {
     const handleUpdate = (e: Event) => {
       const event = e as WidgetUpdateEvent;
       const data = event.detail;
-      
       const incomingId = String(data.widgetId);
       const currentId = widgetIdRef.current;
 
@@ -77,7 +93,6 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
           setRole(data.role);
 
           if (data.config) {
-            // 2. ОБНОВЛЯЕМ БАЗОВЫЙ КОНФИГ ПРИ ВХОДЯЩЕМ ОБНОВЛЕНИИ
             setBaseConfig(data.config);
 
             if (data.config.tasks) {
@@ -86,48 +101,49 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
             }
             if (data.config.columns) setColumns(data.config.columns);
             if (data.config.measures) setMeasures(data.config.measures);
+            // Обновляем пользователей пришедшими с бэка
+            if (data.config.users) setUsers(data.config.users);
           }
       }
     };
 
     widgetEventBus.addEventListener('widget-update', handleUpdate);
-    
-    return () => {
-       widgetEventBus.removeEventListener('widget-update', handleUpdate);
-    };
+    return () => widgetEventBus.removeEventListener('widget-update', handleUpdate);
   }, []);
 
+  // Helpers... (getSetters и другие без изменений)
   const getSetters = (source: 'kanban' | 'mindmap') => {
-    if (isSynced) return [setKanbanTasks, setMindMapTasks];
-    return source === 'kanban' ? [setKanbanTasks] : [setMindMapTasks];
+      if (isSynced) return [setKanbanTasks, setMindMapTasks];
+      return source === 'kanban' ? [setKanbanTasks] : [setMindMapTasks];
   };
 
   const addTaskToStore = useCallback((task: ITaskData, source: 'kanban' | 'mindmap') => {
-    const setters = getSetters(source);
-    setters.forEach(setter => setter(prev => [...prev, task]));
+      const setters = getSetters(source);
+      setters.forEach(setter => setter(prev => [...prev, task]));
   }, [isSynced]);
 
   const updateTaskInStore = useCallback((updatedTask: ITaskData, source: 'kanban' | 'mindmap') => {
-    const setters = getSetters(source);
-    setters.forEach(setter => setter(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t)));
+      const setters = getSetters(source);
+      setters.forEach(setter => setter(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t)));
   }, [isSynced]);
 
   const deleteTaskFromStore = useCallback((taskId: string, deleteSubtasks: boolean, source: 'kanban' | 'mindmap') => {
-    const setters = getSetters(source);
-    setters.forEach(setter => setter(prev => {
-      if (deleteSubtasks) return prev.filter(t => t.id !== taskId && t.parentId !== taskId);
-      return prev.map(t => t.parentId === taskId ? { ...t, parentId: undefined } : t).filter(t => t.id !== taskId);
-    }));
+      const setters = getSetters(source);
+      setters.forEach(setter => setter(prev => {
+        if (deleteSubtasks) return prev.filter(t => t.id !== taskId && t.parentId !== taskId);
+        return prev.map(t => t.parentId === taskId ? { ...t, parentId: undefined } : t).filter(t => t.id !== taskId);
+      }));
   }, [isSynced]);
 
   const toggleSync = useCallback(() => {
-    setIsSynced(prev => {
-      const next = !prev;
-      if (next) setMindMapTasks([...kanbanTasks]);
-      return next;
-    });
+      setIsSynced(prev => {
+        const next = !prev;
+        if (next) setMindMapTasks([...kanbanTasks]);
+        return next;
+      });
   }, [kanbanTasks]);
 
+  // --- СОХРАНЕНИЕ ---
   const saveAllData = useCallback(async () => {
     if (!widgetId) {
         setSaveError("ID виджета не найден");
@@ -137,12 +153,12 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
     setIsLoading(true);
     setSaveError(null);
 
-
     const configPayload = {
       ...baseConfig,
       tasks: kanbanTasks,
       columns: columns,
-      measures: measures, 
+      measures: measures,
+      users: users, 
       updatedAt: new Date().toISOString()
     };
 
@@ -152,8 +168,6 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: configPayload })
       });
-      
-      console.log("Saving payload:", configPayload);
 
       if (!response.ok) throw new Error(`Status: ${response.status}`);
     } catch (e: any) {
@@ -162,7 +176,7 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
     } finally {
       setIsLoading(false);
     }
-  }, [widgetId, baseConfig, kanbanTasks, columns, measures]);
+  }, [widgetId, baseConfig, kanbanTasks, columns, measures, users]); 
 
   return (
     <KanbanContext.Provider value={{
@@ -170,6 +184,7 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
       mindMapTasks, setMindMapTasks,
       columns, setColumns,
       measures, setMeasures, 
+      users, setUsers, addUser, 
       isLoading, saveError, widgetId, userId, role,
       saveAllData,
       isMindMapVisible, setMindMapVisible,
@@ -181,7 +196,6 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useKanbanContext = () => {
   const context = useContext(KanbanContext);
   if (!context) throw new Error("useKanbanContext error");

@@ -29,6 +29,7 @@ export interface ColumnData {
 export interface IWidgetConfig {
   tasks?: ITaskData[];
   columns?: ColumnData[];
+  users?: string[]; 
   measures?: {
     width: number;
     height: number;
