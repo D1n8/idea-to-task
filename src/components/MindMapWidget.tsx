@@ -3,7 +3,6 @@ import ReactDOM from "react-dom";
 import { Plus, RefreshCw, X, AlertCircle, Calendar, User, CheckCircle2 } from 'lucide-react';
 import type { ITaskData, ColumnData } from '../types/modules';
 import { useKanbanBoard } from '../hooks/useKanbanBoard';
-import { AVAILABLE_USERS } from "../data/mockData";
 import TaskModal from './modals/TaskModal';
 import DeleteTaskModal from './modals/DeleteTaskModal';
 
@@ -118,7 +117,7 @@ const MindMapItem = ({
 
 export const MindMapWidget: React.FC = () => {
   const {
-    tasks, columns,
+    tasks, columns, users, // <--- Достаем users
     taskModal, setTaskModal,
     deleteTaskModal, setDeleteTaskModal,
     handleSaveTask, handleDeleteTask,
@@ -190,7 +189,7 @@ export const MindMapWidget: React.FC = () => {
             initialParentId={taskModal.parentId}
             columns={columns}
             allTasks={tasks}
-            users={AVAILABLE_USERS} // Используем общие моковые данные
+            users={users} 
             onSave={handleSaveTask}
             onOpenParent={(pid) => { const p = tasks.find(t => t.id === pid); if(p) openEditTaskModal(p); }}
             onAddSubtask={openSubtaskModal}

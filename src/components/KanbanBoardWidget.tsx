@@ -6,7 +6,6 @@ import TaskModal from "./modals/TaskModal";
 import DeleteColumnModal from "./modals/DeleteColumnModal";
 import DeleteTaskModal from "./modals/DeleteTaskModal"; 
 import { useKanbanBoard } from "../hooks/useKanbanBoard";
-import { AVAILABLE_USERS } from "../data/mockData";
 import { getPriorityWeight } from "../utils/kanbanUtils";
 import { useKanbanContext } from "../context/KanbanContext";
 
@@ -14,7 +13,8 @@ export const KanbanBoardWidget: React.FC = () => {
   const { isMindMapVisible, setMindMapVisible } = useKanbanContext();
   
   const {
-    columns, tasks, taskModal, setTaskModal, deleteColumnModal, setDeleteColumnModal,
+    columns, tasks, users,
+    taskModal, setTaskModal, deleteColumnModal, setDeleteColumnModal,
     deleteTaskModal, setDeleteTaskModal, handleDeleteTask, openDeleteTaskModal,
     handleSaveTask, handleDeleteColumn, openSubtaskModal, openEditTaskModal,
     handleCreateColumn, handleRenameColumn, confirmDeleteColumn, handleSetDoneColumn,
@@ -80,7 +80,6 @@ export const KanbanBoardWidget: React.FC = () => {
 
               <div className="kanban-task-list p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar min-h-[50px]">
                 {colTasks.map((task) => {
-                  // 6. Исправленная логика Done и подсветки
                   const isColumnDone = columns.find(c => c.id === task.status)?.isDoneColumn;
                   const isExpired = task.deadline && new Date(task.deadline) < new Date() && !isColumnDone;
                   
@@ -109,7 +108,6 @@ export const KanbanBoardWidget: React.FC = () => {
                         )}
                       </div>
 
-                      {/* 8. Троеточие при переполнении */}
                       <h4 className="text-sm font-bold text-slate-700 leading-snug mb-1 group-hover:text-indigo-700 transition-colors truncate" title={task.title}>
                         {task.title}
                       </h4>
@@ -148,7 +146,7 @@ export const KanbanBoardWidget: React.FC = () => {
             initialParentId={taskModal.parentId}
             columns={columns}
             allTasks={tasks}
-            users={AVAILABLE_USERS}
+            users={users} // <--- Передаем динамический список
             onSave={handleSaveTask}
             onOpenParent={(pid) => { const p = tasks.find(t => t.id === pid); if(p) openEditTaskModal(p); }}
             onAddSubtask={openSubtaskModal}
