@@ -1,6 +1,115 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import type { ITaskData, ColumnData } from "../../types/modules";
-import { X, ArrowLeft, Calendar, History, User, AlertCircle, ArrowRight, ListTree, Plus, Link } from 'lucide-react';
+import { 
+  X, ArrowLeft, Calendar, History, User, AlertCircle, 
+  ArrowRight, ListTree, Plus, Link, ChevronsUpDown, Check 
+} from 'lucide-react';
+
+interface UserSelectProps {
+  value: string;
+  users: string[];
+  onChange: (user: string) => void;
+}
+
+const UserSelect: React.FC<UserSelectProps> = ({ value, users, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearch(value || "");
+    }
+  }, [value, isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearch(value || "");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value]);
+
+  // Фильтрация пользователей
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => u.toLowerCase().includes(search.toLowerCase()));
+  }, [users, search]);
+
+  const handleSelect = (user: string) => {
+    onChange(user);
+    setSearch(user);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <div className="relative">
+        <input
+          type="text"
+          className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
+          placeholder="Выберите или введите..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+        />
+        <div 
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer hover:text-slate-600"
+            onClick={() => setIsOpen(!isOpen)}
+        >
+          <ChevronsUpDown size={14} />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100">
+          {/* Опция "Без исполнителя" */}
+          <div 
+            className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-50 flex items-center justify-between ${value === "" ? "bg-blue-50 text-blue-700" : "text-slate-600"}`}
+            onClick={() => handleSelect("")}
+          >
+            <span>Без исполнителя</span>
+            {value === "" && <Check size={14} />}
+          </div>
+
+          {/* Список отфильтрованных пользователей */}
+          {filteredUsers.map(user => (
+            <div 
+              key={user}
+              className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-50 flex items-center justify-between ${value === user ? "bg-blue-50 text-blue-700" : "text-slate-700"}`}
+              onClick={() => handleSelect(user)}
+            >
+              <span>{user}</span>
+              {value === user && <Check size={14} />}
+            </div>
+          ))}
+
+          {/* Логика добавления нового пользователя */}
+          {search.trim() && !filteredUsers.some(u => u.toLowerCase() === search.toLowerCase()) && (
+            <div 
+              className="px-3 py-2 text-sm cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center gap-2 border-t border-indigo-100 font-medium"
+              onClick={() => handleSelect(search.trim())}
+            >
+              <Plus size={14} />
+              Создать: "{search}"
+            </div>
+          )}
+
+          {filteredUsers.length === 0 && !search.trim() && (
+             <div className="px-3 py-2 text-xs text-slate-400 text-center">Начните ввод для поиска</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Основной компонент модального окна ---
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -40,7 +149,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
     }
   }, [isOpen, editingTask, initialStatus, initialParentId]);
 
-  // Фильтрация доступных родителей (исключаем себя и своих потомков, чтобы не было циклов)
+  // Фильтрация доступных родителей
   const availableParents = useMemo(() => {
     if (!editingTask) return allTasks;
 
@@ -51,9 +160,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
     };
 
     return allTasks.filter(t => {
-      // 1. Нельзя выбрать самого себя
       if (t.id === editingTask.id) return false;
-      // 2. Нельзя выбрать своего потомка (проверка на цикл)
       if (isDescendant(editingTask.id, t.id)) return false;
       return true;
     });
@@ -82,7 +189,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
             <h2 className="text-xl font-bold text-slate-800">
               {editingTask ? "Редактирование задачи" : "Новая задача"}
             </h2>
-            {/* Ссылка на родителя (если он есть) */}
             {parentTask && (
               <button 
                 onClick={() => onOpenParent(parentTask.id)}
@@ -176,19 +282,16 @@ const TaskModal: React.FC<TaskModalProps> = ({
               </select>
             </div>
 
-            {/* Исполнитель */}
+            {/* Исполнитель - ЗАМЕНЕНО НА UserSelect */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                 <User size={12} /> Исполнитель
               </label>
-              <select 
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
-                value={formData.username || ""} 
-                onChange={e => setFormData({...formData, username: e.target.value})}
-              >
-                <option value="">Без исполнителя</option>
-                {users.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
+              <UserSelect 
+                value={formData.username || ""}
+                users={users}
+                onChange={(newUser) => setFormData({...formData, username: newUser})}
+              />
             </div>
           </div>
 

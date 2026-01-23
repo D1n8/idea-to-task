@@ -26,20 +26,20 @@ export interface ColumnData {
   isDoneColumn?: boolean;
 }
 
+export interface IWidgetConfig {
+  tasks?: ITaskData[];
+  columns?: ColumnData[];
+  measures?: {
+    width: number;
+    height: number;
+  };
+}
+
 export interface IHostInfo {
   widgetId: number;
   userId: number;
   role: string;
-  config: {
-    tasks?: ITaskData[];
-    columns?: ColumnData[];
-    // Размеры виджета
-    measures?: {
-      width: number;
-      height: number;
-    };
-    [key: string]: any;
-  };
+  config: IWidgetConfig & { [key: string]: any };
   board: {
     id: number;
     name: string;

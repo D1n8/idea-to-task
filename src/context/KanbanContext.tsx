@@ -40,13 +40,15 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
   const [userId, setUserId] = useState<number | null>(initialData?.userId || null);
   const [role, setRole] = useState<string | null>(initialData?.role || null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [baseConfig, setBaseConfig] = useState<Record<string, any>>(initialData?.config || {});
+
   const [kanbanTasks, setKanbanTasks] = useState<ITaskData[]>(initialData?.config?.tasks || []);
   const [mindMapTasks, setMindMapTasks] = useState<ITaskData[]>(initialData?.config?.tasks || []);
   const [columns, setColumns] = useState<ColumnData[]>(initialData?.config?.columns || [
     { id: "todo", title: "К выполнению", x: 0, y: 0, width: 300 }
   ]);
 
-  // --- РАЗМЕРЫ (MEASURES) ---
   const [measures, setMeasures] = useState<{ width: number; height: number }>({
     width: initialData?.config?.measures?.width || 1000,
     height: initialData?.config?.measures?.height || 600,
@@ -69,34 +71,32 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
       const incomingId = String(data.widgetId);
       const currentId = widgetIdRef.current;
 
-      // Проверка: Обновляем только если ID совпадает или это первая инициализация
       if (!currentId || currentId === incomingId) {
           setWidgetId(incomingId);
           setUserId(data.userId);
           setRole(data.role);
 
           if (data.config) {
+            // 2. ОБНОВЛЯЕМ БАЗОВЫЙ КОНФИГ ПРИ ВХОДЯЩЕМ ОБНОВЛЕНИИ
+            setBaseConfig(data.config);
+
             if (data.config.tasks) {
                 setKanbanTasks(data.config.tasks);
                 setMindMapTasks(data.config.tasks);
             }
             if (data.config.columns) setColumns(data.config.columns);
-            // Обновляем размеры, если пришли с бэка
             if (data.config.measures) setMeasures(data.config.measures);
           }
       }
     };
 
-    // Подписываемся
     widgetEventBus.addEventListener('widget-update', handleUpdate);
     
     return () => {
-       // Отписываемся
        widgetEventBus.removeEventListener('widget-update', handleUpdate);
     };
   }, []);
 
-  // Helpers... (getSetters, addTaskToStore и т.д. без изменений)
   const getSetters = (source: 'kanban' | 'mindmap') => {
     if (isSynced) return [setKanbanTasks, setMindMapTasks];
     return source === 'kanban' ? [setKanbanTasks] : [setMindMapTasks];
@@ -128,7 +128,6 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
     });
   }, [kanbanTasks]);
 
-  // --- СОХРАНЕНИЕ ---
   const saveAllData = useCallback(async () => {
     if (!widgetId) {
         setSaveError("ID виджета не найден");
@@ -138,7 +137,9 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
     setIsLoading(true);
     setSaveError(null);
 
+
     const configPayload = {
+      ...baseConfig,
       tasks: kanbanTasks,
       columns: columns,
       measures: measures, 
@@ -151,9 +152,8 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: configPayload })
       });
-      console.log(configPayload)
-      console.log(response)
-
+      
+      console.log("Saving payload:", configPayload);
 
       if (!response.ok) throw new Error(`Status: ${response.status}`);
     } catch (e: any) {
@@ -162,7 +162,7 @@ export const KanbanProvider: React.FC<{ children: ReactNode; initialData?: any }
     } finally {
       setIsLoading(false);
     }
-  }, [widgetId, kanbanTasks, columns, measures]);
+  }, [widgetId, baseConfig, kanbanTasks, columns, measures]);
 
   return (
     <KanbanContext.Provider value={{
