@@ -1,8 +1,8 @@
 ## Установка 
-'''
+```
 npm install @xyflow/react
 npm install idea-to-task-module
-'''
+```
 ## Пример использования
 
 ```
