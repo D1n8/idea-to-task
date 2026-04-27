@@ -1,24 +1,25 @@
 ## Установка 
+'''
+npm install @xyflow/react
 npm install idea-to-task-module
-
+'''
 ## Пример использования
 
 ```
 import React, { useMemo } from 'react';
-import ReactFlow, { 
+import { 
+  ReactFlow, 
   Background, 
   Controls, 
   MiniMap, 
-  useNodesState,
-  type NodeTypes 
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+  useNodesState 
+} from '@xyflow/react';
 
-// Импорт виджета и функции обновления из пакета
-import { IdeaToTaskWidget, getInfo } from 'idea-to-task-module';
+import '@xyflow/react/dist/style.css';
+
+import { IdeaToTaskWidget } from 'idea-to-task-module';
 import 'idea-to-task-module/style.css';
 
-// ID тестового виджета
 const TEST_WIDGET_ID = 555;
 
 const INITIAL_DATA = {
@@ -33,7 +34,7 @@ const INITIAL_DATA = {
 };
 
 export default function App() {
-  const nodeTypes = useMemo<NodeTypes>(() => ({
+  const nodeTypes = useMemo(() => ({
     'idea-widget': IdeaToTaskWidget,
   }), []);
 
